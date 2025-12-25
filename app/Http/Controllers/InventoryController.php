@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\StoreInventoryRequest;
+use App\Http\Requests\TransferInventoryRequest;
 
 class InventoryController extends Controller
 {
@@ -23,14 +25,14 @@ class InventoryController extends Controller
     /**
      * Add or update stock.
      */
-    public function store(Request $request)
+    public function store(StoreInventoryRequest $request)
     {
-        $validated = $request->validate([
-            'unit_id' => 'required|exists:units,id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer',
-            'low_stock_threshold' => 'integer'
-        ]);
+        // Only Admin or Manager can manually adjust stock
+        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+            abort(403, 'Unauthorized. Only managers can adjust stock manually.');
+        }
+
+        $validated = $request->validated();
 
         $inventory = Inventory::firstOrNew([
             'unit_id' => $validated['unit_id'],
@@ -51,14 +53,9 @@ class InventoryController extends Controller
     /**
      * Transfer stock between units.
      */
-    public function transfer(Request $request)
+    public function transfer(TransferInventoryRequest $request)
     {
-        $validated = $request->validate([
-            'from_unit_id' => 'required|exists:units,id',
-            'to_unit_id' => 'required|exists:units,id|different:from_unit_id',
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-        ]);
+        $validated = $request->validated();
 
         return DB::transaction(function () use ($validated) {
             // Decrement source

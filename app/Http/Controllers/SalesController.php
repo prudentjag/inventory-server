@@ -9,23 +9,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+use App\Http\Requests\StoreSaleRequest;
+
 class SalesController extends Controller
 {
     /**
      * Store a new sale transaction.
      */
-    public function store(Request $request)
+    public function store(StoreSaleRequest $request)
     {
-        $validated = $request->validate([
-            'unit_id' => 'required|exists:units,id',
-            'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric',
-            'payment_method' => 'required|string',
-            'payment_status' => 'string',
-            'transaction_reference' => 'nullable|string'
-        ]);
+        $validated = $request->validated();
 
         try {
             return DB::transaction(function () use ($validated, $request) {

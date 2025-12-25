@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+
+use Illuminate\Support\Facades\Gate;
 
 class ProductController extends Controller
 {
@@ -12,21 +16,11 @@ class ProductController extends Controller
         return Product::with(['brand', 'category'])->get();
     }
 
-    public function store(Request $request)
+    public function store(StoreProductRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string',
-            'brand_id' => 'required|exists:brands,id',
-            'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|unique:products|string',
-            'unit_of_measurement' => 'required|string',
-            'cost_price' => 'required|numeric',
-            'selling_price' => 'required|numeric',
-            'expiry_date' => 'nullable|date',
-            'trackable' => 'boolean',
-        ]);
+        Gate::authorize('create', Product::class);
 
-        $product = Product::create($validated);
+        $product = Product::create($request->validated());
 
         return response()->json($product, 201);
     }
@@ -36,30 +30,24 @@ class ProductController extends Controller
         return Product::with(['brand', 'category'])->findOrFail($id);
     }
 
-    public function update(Request $request, string $id)
+    public function update(UpdateProductRequest $request, string $id)
     {
         $product = Product::findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'string',
-            'brand_id' => 'exists:brands,id',
-            'category_id' => 'exists:categories,id',
-            'sku' => 'unique:products,sku,' . $id,
-            'unit_of_measurement' => 'string',
-            'cost_price' => 'numeric',
-            'selling_price' => 'numeric',
-            'expiry_date' => 'nullable|date',
-            'trackable' => 'boolean',
-        ]);
+        Gate::authorize('update', $product);
 
-        $product->update($validated);
+        $product->update($request->validated());
 
         return response()->json($product);
     }
 
     public function destroy(string $id)
     {
-        Product::destroy($id);
+        $product = Product::find($id);
+        if ($product) {
+            Gate::authorize('delete', $product);
+            $product->delete();
+        }
         return response()->noContent();
     }
 }

@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
+use App\Http\Requests\LoginRequest;
+
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        // Validation handled by LoginRequest
 
         if (!Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
@@ -34,7 +34,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Load units for frontend context
-        return response()->json([
+        return ResponseService::success([
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user->load('units'),
@@ -44,7 +44,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out successfully']);
+        return ResponseService::success(['message' => 'Logged out successfully']);
     }
 
     public function me(Request $request)
