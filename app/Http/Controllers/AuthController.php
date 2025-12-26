@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegisterRequest;
 use App\Http\Services\ResponseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,5 +51,20 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user()->load('units'));
+    }
+
+    public function register(RegisterRequest $request){
+        $data = $request->validated();
+        $data['password'] = bcrypt($data['password']);
+        $user = User::create($data);
+        return ResponseService::success($user, "User {$user->name} created successfully");
+    }
+
+    public function users(Request $request){
+        $user = $request->user();
+        if($user->role !== 'admin'){
+            return ResponseService::error('Unauthorized', 401);
+        }
+        return ResponseService::success(User::all(), 'Users fetched successfully');
     }
 }
