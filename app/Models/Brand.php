@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Brand extends Model
 {
     //
-    protected $fillable = ['name', 'category_id', 'image_path'];
+    protected $fillable = ['name', 'category_id', 'image_path', 'items_per_set'];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->image_path) {
+            return asset('storage/' . $this->image_path);
+        }
+        return null;
+    }
 
     public function category()
     {

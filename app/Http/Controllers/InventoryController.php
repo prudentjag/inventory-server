@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ResponseService;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\StoreInventoryRequest;
 use App\Http\Requests\TransferInventoryRequest;
+use App\Services\AuditService;
 
 class InventoryController extends Controller
 {
@@ -17,9 +19,9 @@ class InventoryController extends Controller
     {
         $request->validate(['unit_id' => 'required|exists:units,id']);
 
-        return Inventory::with('product')
+        return ResponseService::success( Inventory::with('product','product.brand','product.category')
             ->where('unit_id', $request->unit_id)
-            ->get();
+            ->get(), "Inventory for unit {$request->unit_id}");
     }
 
     /**
@@ -39,13 +41,16 @@ class InventoryController extends Controller
             'product_id' => $validated['product_id']
         ]);
 
-        $inventory->quantity = ($inventory->exists ? $inventory->quantity : 0) + $validated['quantity'];
+        $oldQuantity = $inventory->exists ? $inventory->quantity : 0;
+        $inventory->quantity = $oldQuantity + $validated['quantity'];
 
         if (isset($validated['low_stock_threshold'])) {
             $inventory->low_stock_threshold = $validated['low_stock_threshold'];
         }
 
         $inventory->save();
+
+        AuditService::log('inventory_updated', $inventory->product_id, $inventory, ['quantity' => $oldQuantity], ['quantity' => $inventory->quantity], "Manual stock adjustment for product ID: {$validated['product_id']}.");
 
         return response()->json($inventory);
     }
@@ -69,6 +74,7 @@ class InventoryController extends Controller
                 return response()->json(['message' => 'Insufficient stock in source unit.'], 400);
             }
 
+            $oldSourceQuantity = $source->quantity;
             $source->decrement('quantity', $validated['quantity']);
 
             // Increment destination
@@ -77,7 +83,11 @@ class InventoryController extends Controller
                 ['quantity' => 0]
             );
 
+            $oldDestQuantity = $dest->quantity;
             $dest->increment('quantity', $validated['quantity']);
+
+            AuditService::log('inventory_transfer', $validated['product_id'], $source, ['quantity' => $oldSourceQuantity], ['quantity' => $source->fresh()->quantity], "Transferred {$validated['quantity']} units out to unit ID: {$validated['to_unit_id']}.");
+            AuditService::log('inventory_transfer', $validated['product_id'], $dest, ['quantity' => $oldDestQuantity], ['quantity' => $dest->fresh()->quantity], "Transferred {$validated['quantity']} units in from unit ID: {$validated['from_unit_id']}.");
 
             return response()->json(['message' => 'Transfer successful']);
         });

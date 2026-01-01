@@ -1,7 +1,19 @@
 # Inventory & POS System API Documentation
 
-**Base URL**: `https://op6iimxret.sharedwithexpose.com/api`
+**Base URL**: `/api`  
 **Authentication**: Bearer Token (Sanctum)
+
+---
+
+## Roles
+
+| Role        | Description                                       |
+| ----------- | ------------------------------------------------- |
+| `admin`     | Full system access                                |
+| `stockist`  | Central stock management, approve/reject requests |
+| `manager`   | Unit management, inventory, sales                 |
+| `unit_head` | Similar to manager                                |
+| `staff`     | Sales only                                        |
 
 ---
 
@@ -11,217 +23,232 @@
 
 **POST** `/login`
 
--   **Body**:
-    ```json
-    {
-        "email": "user@example.com",
-        "password": "password"
-    }
-    ```
--   **Response (200)**:
-    ```json
-    {
-      "access_token": "1|...",
-      "token_type": "Bearer",
-      "user": { "id": 1, "name": "...", "role": "admin", ... }
-    }
-    ```
+```json
+{ "email": "user@example.com", "password": "password" }
+```
+
+**Response**: `{ "access_token": "...", "user": {...} }`
 
 ### Register User (Admin Only)
 
 **POST** `/register`
 
--   **Headers**: `Authorization: Bearer <token>`
--   **Body**:
-    ```json
-    {
-        "name": "New Staff",
-        "email": "staff@example.com",
-        "password": "password",
-        "role": "staff", // admin, staff, manager, unit_head
-        "is_active": true
-    }
-    ```
--   **Response (200)**: Success message and user data.
+```json
+{
+    "name": "New Staff",
+    "email": "staff@example.com",
+    "password": "password",
+    "role": "staff",
+    "is_active": true
+}
+```
 
 ### Get Current User
 
 **GET** `/user`
 
--   **Response (200)**: Returns user profile with assigned units.
--   **Headers**: `Authorization: Bearer <token>`
-
 ### Logout
 
 **POST** `/logout`
 
--   **Headers**: `Authorization: Bearer <token>`
-
 ---
 
-## 2. Metadata (Brands & Categories)
-
-**Permissions**:
-
--   **View**: All Roles
--   **Create/Update/Delete**: `admin`, `manager` only.
+## 2. Brands & Categories
 
 ### Brands
 
--   **GET** `/brands` - List all brands
--   **POST** `/brands` - Create brand `{ "name": "Heineken", "category_id": 1 }`
--   **PUT** `/brands/{id}` - Update brand
--   **DELETE** `/brands/{id}` - Delete brand
+| Method | Endpoint       | Body                                                 |
+| ------ | -------------- | ---------------------------------------------------- |
+| GET    | `/brands`      | -                                                    |
+| POST   | `/brands`      | `{ name, category_id, image (file), items_per_set }` |
+| PUT    | `/brands/{id}` | Same as POST                                         |
+| DELETE | `/brands/{id}` | -                                                    |
+
+**Response includes**: `image_url` (full URL to brand image)
 
 ### Categories
 
--   **GET** `/categories` - List all categories
--   **POST** `/categories` - Create category `{ "name": "Beer", "description": "Alcoholic" }`
--   **PUT** `/categories/{id}` - Update category
--   **DELETE** `/categories/{id}` - Delete category
+| Method | Endpoint           | Body                    |
+| ------ | ------------------ | ----------------------- |
+| GET    | `/categories`      | -                       |
+| POST   | `/categories`      | `{ name, description }` |
+| PUT    | `/categories/{id}` | Same as POST            |
+| DELETE | `/categories/{id}` | -                       |
 
 ---
 
 ## 3. Products
 
-**Permissions**:
+| Method | Endpoint         | Body                                                                                                    |
+| ------ | ---------------- | ------------------------------------------------------------------------------------------------------- |
+| GET    | `/products`      | -                                                                                                       |
+| POST   | `/products`      | `{ name, brand_id, category_id, sku, unit_of_measurement, size, cost_price, selling_price, trackable }` |
+| PUT    | `/products/{id}` | Same as POST                                                                                            |
+| DELETE | `/products/{id}` | -                                                                                                       |
 
--   **View**: All Roles
--   **Create/Update/Delete**: `admin`, `manager` only.
-
-### List Products
-
-**GET** `/products`
-
-### Create Product
-
-**POST** `/products`
-
--   **Body**:
-    ```json
-    {
-        "name": "Heineken 330ml",
-        "brand_id": 1,
-        "category_id": 1,
-        "sku": "HEIN-330",
-        "unit_of_measurement": "bottle",
-        "cost_price": 10.0,
-        "selling_price": 15.0,
-        "trackable": true
-    }
-    ```
-
-### Update Product
-
-**PUT** `/products/{id}`
-
-### Delete Product
-
-**DELETE** `/products/{id}`
+**Size options**: `small`, `medium`, `big`
 
 ---
 
-## 3. Inventory
+## 4. Units (Admin Only)
 
-### List Inventory
-
-**GET** `/inventory?unit_id={id}`
-
-### Add/Update Stock (Admin/Manager Only)
-
-**POST** `/inventory`
-
--   **Body**:
-    ```json
-    {
-        "unit_id": 1,
-        "product_id": 5,
-        "quantity": 50, // Amount to ADD (not set)
-        "low_stock_threshold": 10
-    }
-    ```
-
-### Transfer Stock
-
-**POST** `/inventory/transfer`
-
--   **Body**:
-    ```json
-    {
-        "from_unit_id": 1,
-        "to_unit_id": 2,
-        "product_id": 5,
-        "quantity": 10
-    }
-    ```
+| Method | Endpoint            | Description                       |
+| ------ | ------------------- | --------------------------------- |
+| GET    | `/units`            | List all units/stores             |
+| POST   | `/units`            | Create unit                       |
+| PUT    | `/units/{id}`       | Update unit                       |
+| DELETE | `/units/{id}`       | Delete unit                       |
+| POST   | `/units/{id}/users` | Assign user to unit `{ user_id }` |
+| DELETE | `/units/{id}/users` | Remove user from unit             |
 
 ---
 
-## 4. Sales (POS)
+## 5. Central Stock (Stockist/Admin)
+
+### Stock Management
+
+| Method | Endpoint      | Body                                                                       |
+| ------ | ------------- | -------------------------------------------------------------------------- |
+| GET    | `/stock`      | List central warehouse stock                                               |
+| POST   | `/stock`      | Add to stock `{ product_id, quantity, low_stock_threshold, batch_number }` |
+| PUT    | `/stock/{id}` | Update stock                                                               |
+| DELETE | `/stock/{id}` | Delete stock entry                                                         |
+
+### Stock Requests (Approval Workflow)
+
+| Method | Endpoint                       | Access         | Body                                       |
+| ------ | ------------------------------ | -------------- | ------------------------------------------ |
+| GET    | `/stock-requests`              | All            | Query: `?status=pending`                   |
+| POST   | `/stock-requests`              | All            | `{ unit_id, product_id, quantity, notes }` |
+| GET    | `/stock-requests/{id}`         | All            | -                                          |
+| POST   | `/stock-requests/{id}/approve` | Stockist/Admin | -                                          |
+| POST   | `/stock-requests/{id}/reject`  | Stockist/Admin | `{ notes }`                                |
+
+**Approval Flow**:
+
+1. Unit manager creates request
+2. Stockist sees pending requests
+3. On approve: Central stock ↓, Unit inventory ↑
+
+---
+
+## 6. Unit Inventory
+
+| Method | Endpoint                  | Body                                                               |
+| ------ | ------------------------- | ------------------------------------------------------------------ |
+| GET    | `/inventory?unit_id={id}` | List unit inventory                                                |
+| POST   | `/inventory`              | Add stock `{ unit_id, product_id, quantity, low_stock_threshold }` |
+| POST   | `/inventory/transfer`     | Transfer `{ from_unit_id, to_unit_id, product_id, quantity }`      |
+
+---
+
+## 7. Sales (POS)
 
 ### Process Sale
 
 **POST** `/sales`
 
--   **Body**:
-    ```json
-    {
-        "unit_id": 1,
-        "payment_method": "cash",
-        "items": [{ "product_id": 5, "quantity": 2, "unit_price": 15.0 }]
-    }
-    ```
--   **Note**: Stock is automatically deducted. Returns 400 if insufficient stock.
+```json
+{
+    "unit_id": 1,
+    "payment_method": "monnify",
+    "redirect_url": "https://yourfrontend.com/callback",
+    "items": [{ "product_id": 5, "quantity": 2, "unit_price": 15.0 }]
+}
+```
+
+_Note: If `payment_method` is `monnify`, the response will include `payment_data` with a `checkoutUrl`. This will display a **Virtual Account Number** (Bank Transfer) for the customer to pay._
+
+### Webhooks
+
+**POST** `/webhooks/monnify` (External only)
+Used by Monnify to notify the system of successful payments.
 
 ### Sales History
 
-**GET** `/sales/history/{unit_id}`
+| Method | Endpoint                                 | Access         | Description                      |
+| ------ | ---------------------------------------- | -------------- | -------------------------------- |
+| GET    | `/sales`                                 | Admin/Stockist | List ALL sales across all units  |
+| GET    | `/sales/history/{unit_id}`               | Assigned Staff | List sales for a specific unit   |
+| GET    | `/sales/{invoice_number}/verify-payment` | All            | Manually verify Monnify payment  |
+| GET    | `/my-sales`                              | All            | List YOUR personal sales history |
+
+**Available Filters** (Query Params):
+
+-   `start_date`: e.g., `2024-01-01`
+-   `end_date`: e.g., `2024-01-31`
+-   `payment_method`: `cash`, `pos`, `transfer`
+-   `payment_status`: `paid`, `pending`
+-   `unit_id`: Filter by unit (works on `/sales` and `/my-sales`)
+-   `user_id`: Filter by seller (Admin/Stockist only on `/sales`)
 
 ---
 
-## 5. Dashboard
-
-### Get Dashboard Stats
+## 8. Dashboard
 
 **GET** `/dashboard/stats`
 
--   **Description**: Returns statistics based on user role (Admin vs Staff).
--   **Response (Admin)**:
-    ```json
-    {
-        "role": "admin",
-        "total_users": 10,
-        "total_products": 50,
-        "total_sales_count": 120,
-        "total_revenue": 50000.0,
-        "low_stock_alerts": 5
-    }
-    ```
--   **Response (Manager / Unit Head)**:
-    ```json
-    {
-        "role": "manager",
-        "unit_sales_count": 45,
-        "unit_revenue": 12500.0,
-        "low_stock_alerts": 2,
-        "total_products_in_units": 20
-    }
-    ```
--   **Response (Staff)**:
-    ```json
-    {
-        "role": "staff",
-        "my_sales_count": 15,
-        "my_revenue": 4500.0,
-        "items_sold": 30
-    }
-    ```
+### Response by Role
+
+**Admin**:
+
+```json
+{
+    "role": "admin",
+    "total_users": 10,
+    "total_products": 50,
+    "total_sales_count": 120,
+    "total_revenue": 50000,
+    "low_stock_alerts": 5
+}
+```
+
+**Stockist**:
+
+```json
+{
+    "role": "stockist",
+    "total_central_stock": 1000,
+    "total_products_in_stock": 25,
+    "low_stock_alerts": 3,
+    "pending_requests": 5
+}
+```
+
+**Manager/Unit Head**:
+
+```json
+{
+    "role": "manager",
+    "unit_sales_count": 45,
+    "unit_revenue": 12500,
+    "low_stock_alerts": 2,
+    "total_products_in_units": 20
+}
+```
+
+**Staff**:
+
+```json
+{ "role": "staff", "my_sales_count": 15, "my_revenue": 4500, "items_sold": 30 }
+```
+
+---
+
+## 9. Audit Logs (Admin/Stockist)
+
+| Method | Endpoint                  | Description                         | Query Params           |
+| ------ | ------------------------- | ----------------------------------- | ---------------------- |
+| GET    | `/audit-logs`             | List all activity logs              | `action`, `product_id` |
+| GET    | `/audit-logs/{type}/{id}` | Get history for a specific resource | -                      |
+
+**Action types**: `stock_added`, `stock_updated`, `product_created`, `product_updated`, `stock_request_approved`, `inventory_updated`, `inventory_transfer`.
+
+**Resource types**: `stock`, `product`, `stockRequest`, `inventory`.
 
 ---
 
 ## Response Format
-
-Standard success response (where applicable):
 
 ```json
 {
@@ -234,5 +261,6 @@ Standard success response (where applicable):
 ## Error Codes
 
 -   **401**: Unauthenticated
--   **403**: Unauthorized (Role restrictions)
+-   **403**: Unauthorized
 -   **422**: Validation Error
+-   **400**: Bad Request

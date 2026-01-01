@@ -26,6 +26,16 @@ class DashboardController extends Controller
             ]);
         }
 
+        if ($user->role === 'stockist') {
+            return response()->json([
+                'role' => 'stockist',
+                'total_central_stock' => \App\Models\Stock::sum('quantity'),
+                'total_products_in_stock' => \App\Models\Stock::count(),
+                'low_stock_alerts' => \App\Models\Stock::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
+                'pending_requests' => \App\Models\StockRequest::where('status', 'pending')->count(),
+            ]);
+        }
+
         if (in_array($user->role, ['manager', 'unit_head'])) {
             $unitIds = $user->units()->pluck('units.id');
 

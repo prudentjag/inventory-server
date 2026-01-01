@@ -24,7 +24,8 @@ class StoreBrandRequest extends FormRequest
         return [
             'name' => 'required|string|unique:brands,name',
             'category_id' => 'exists:categories,id',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|max:2048',
+            'items_per_set' => 'nullable|integer|min:1'
         ];
     }
 }

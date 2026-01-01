@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
             "email"=> "required|email|unique:users,email",
             "password"=> "required|min:8",
             "name"=> "required",
-            "role"=> "required|in:admin,staff,manager,unit_head",
+            "role"=> "required|in:admin,staff,manager,unit_head,stockist",
             "is_active"=> "required|boolean",
         ];
     }

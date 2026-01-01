@@ -65,6 +65,6 @@ class AuthController extends Controller
         if($user->role !== 'admin'){
             return ResponseService::error('Unauthorized', 401);
         }
-        return ResponseService::success(User::all(), 'Users fetched successfully');
+        return ResponseService::success(User::with('units')->get(), 'Users fetched successfully');
     }
 }

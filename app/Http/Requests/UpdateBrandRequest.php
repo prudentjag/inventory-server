@@ -24,7 +24,8 @@ class UpdateBrandRequest extends FormRequest
         return [
             'name' => 'string|unique:brands,name,' . $this->route('brand')->id,
             'category_id' => 'exists:categories,id',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|max:2048',
+            'items_per_set' => 'nullable|integer|min:1'
         ];
     }
 }

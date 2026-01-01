@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ResponseService;
 use App\Models\Product;
+use App\Models\Stock;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Services\AuditService;
 
 use Illuminate\Support\Facades\Gate;
 
@@ -13,16 +16,29 @@ class ProductController extends Controller
 {
     public function index()
     {
-        return Product::with(['brand', 'category'])->get();
+        return ResponseService::success(Product::with(['brand', 'category'])->get(), 'Products fetched successfully');
     }
 
     public function store(StoreProductRequest $request)
     {
         Gate::authorize('create', Product::class);
 
-        $product = Product::create($request->validated());
+        $validated = $request->validated();
+        $quantity = $validated['quantity'];
+        unset($validated['quantity']);
 
-        return response()->json($product, 201);
+        $product = Product::create($validated);
+
+        // Always add to central stock
+        $stock = Stock::create([
+            'product_id' => $product->id,
+            'quantity' => $quantity,
+        ]);
+
+        AuditService::log('product_created', $product->id, $product, null, $product->toArray(), "Product created: {$product->name}");
+        AuditService::log('stock_added', $product->id, $stock, null, $stock->toArray(), "Initial stock added for product: {$product->name}");
+
+        return ResponseService::success($product->load(['brand', 'category']), 'Product created and added to central stock', 201);
     }
 
     public function show(string $id)
@@ -36,9 +52,11 @@ class ProductController extends Controller
 
         Gate::authorize('update', $product);
 
+        $oldValues = $product->toArray();
         $product->update($request->validated());
+        AuditService::log('product_updated', $product->id, $product, $oldValues, $product->toArray(), "Product updated: {$product->name}");
 
-        return response()->json($product);
+        return  ResponseService::success($product, 'Product updated successfully');
     }
 
     public function destroy(string $id)
@@ -46,8 +64,11 @@ class ProductController extends Controller
         $product = Product::find($id);
         if ($product) {
             Gate::authorize('delete', $product);
+            $oldValues = $product->toArray();
+            $productName = $product->name;
             $product->delete();
+            AuditService::log('product_deleted', $oldValues['id'], null, $oldValues, null, "Product deleted: {$productName}");
         }
-        return response()->noContent();
+        return ResponseService::success(null, 'Product deleted successfully');
     }
 }

@@ -24,13 +24,13 @@ class UpdateProductRequest extends FormRequest
         return [
             'name' => 'string',
             'brand_id' => 'exists:brands,id',
-            'category_id' => 'exists:categories,id',
             'sku' => 'unique:products,sku,' . $this->route('product'),
             'unit_of_measurement' => 'string',
             'cost_price' => 'numeric',
             'selling_price' => 'numeric',
             'expiry_date' => 'nullable|date',
             'trackable' => 'boolean',
+            'size' => 'nullable|in:small,medium,big',
         ];
     }
 }

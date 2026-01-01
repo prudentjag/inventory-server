@@ -24,13 +24,14 @@ class StoreProductRequest extends FormRequest
         return [
             'name' => 'required|string',
             'brand_id' => 'required|exists:brands,id',
-            'category_id' => 'required|exists:categories,id',
             'sku' => 'required|unique:products|string',
             'unit_of_measurement' => 'required|string',
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
             'expiry_date' => 'nullable|date',
             'trackable' => 'boolean',
+            'size' => 'nullable|in:small,medium,big',
+            'quantity' => 'required|integer|min:1',
         ];
     }
 }

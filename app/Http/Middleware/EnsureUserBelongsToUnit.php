@@ -22,6 +22,10 @@ class EnsureUserBelongsToUnit
             return $next($request);
         }
 
+        if ($user->role === 'stockist') {
+            return $next($request);
+        }
+
         // Determine unit_id from request input or route parameter
         $unitId = $request->input('unit_id') ?? $request->route('unit_id');
 
