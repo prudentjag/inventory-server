@@ -76,6 +76,10 @@ class SalesController extends Controller
                     ];
                 }
 
+                // Determine payment status: Monnify requires verification, others are instant
+                $paymentMethod = strtolower($validated['payment_method']);
+                $paymentStatus = ($paymentMethod === 'monnify') ? 'pending' : 'paid';
+
                 // Create Sale
                 $sale = Sale::create([
                     'unit_id' => $validated['unit_id'],
@@ -83,7 +87,7 @@ class SalesController extends Controller
                     'invoice_number' => 'INV-' . strtoupper(Str::random(10)),
                     'total_amount' => $totalAmount,
                     'payment_method' => $validated['payment_method'],
-                    'payment_status' => $validated['payment_status'] ?? 'pending',
+                    'payment_status' => $paymentStatus,
                     'transaction_reference' => $validated['transaction_reference'] ?? null,
                 ]);
 

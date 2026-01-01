@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Stock;
+use App\Models\StockRequest;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Product;
@@ -20,8 +22,8 @@ class DashboardController extends Controller
                 'role' => 'admin',
                 'total_users' => User::count(),
                 'total_products' => Product::count(),
-                'total_sales_count' => Sale::count(),
-                'total_revenue' => Sale::sum('total_amount'),
+                'total_sales_count' => Sale::where('payment_status', 'paid')->count(),
+                'total_revenue' => Sale::where('payment_status', 'paid')->sum('total_amount'),
                 'low_stock_alerts' => Inventory::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
             ]);
         }
@@ -29,10 +31,10 @@ class DashboardController extends Controller
         if ($user->role === 'stockist') {
             return response()->json([
                 'role' => 'stockist',
-                'total_central_stock' => \App\Models\Stock::sum('quantity'),
-                'total_products_in_stock' => \App\Models\Stock::count(),
-                'low_stock_alerts' => \App\Models\Stock::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
-                'pending_requests' => \App\Models\StockRequest::where('status', 'pending')->count(),
+                'total_central_stock' => Stock::sum('quantity'),
+                'total_products_in_stock' => Stock::count(),
+                'low_stock_alerts' => Stock::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
+                'pending_requests' => StockRequest::where('status', 'pending')->count(),
             ]);
         }
 
@@ -41,8 +43,8 @@ class DashboardController extends Controller
 
             return response()->json([
                 'role' => $user->role,
-                'unit_sales_count' => Sale::whereIn('unit_id', $unitIds)->count(),
-                'unit_revenue' => Sale::whereIn('unit_id', $unitIds)->sum('total_amount'),
+                'unit_sales_count' => Sale::whereIn('unit_id', $unitIds)->where('payment_status', 'paid')->count(),
+                'unit_revenue' => Sale::whereIn('unit_id', $unitIds)->where('payment_status', 'paid')->sum('total_amount'),
                 'low_stock_alerts' => Inventory::whereIn('unit_id', $unitIds)
                     ->whereColumn('quantity', '<=', 'low_stock_threshold')
                     ->count(),
@@ -55,12 +57,13 @@ class DashboardController extends Controller
         // Default to user/staff stats
         return response()->json([
             'role' => 'staff',
-            'my_sales_count' => Sale::where('user_id', $user->id)->count(),
-            'my_revenue' => Sale::where('user_id', $user->id)->sum('total_amount'),
+            'my_sales_count' => Sale::where('user_id', $user->id)->where('payment_status', 'paid')->count(),
+            'my_revenue' => Sale::where('user_id', $user->id)->where('payment_status', 'paid')->sum('total_amount'),
             // simple count of items sold by this user
             'items_sold' => DB::table('sales')
                 ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
                 ->where('sales.user_id', $user->id)
+                ->where('sales.payment_status', 'paid')
                 ->sum('sale_items.quantity'),
         ]);
     }
