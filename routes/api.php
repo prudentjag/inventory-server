@@ -70,4 +70,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::get('/audit-logs/{type}/{id}', [AuditLogController::class, 'resourceTrail']);
     });
+
+    // Facilities (Admin/Manager can manage, all authenticated can view)
+    Route::get('/facilities', [\App\Http\Controllers\FacilityController::class, 'index']);
+    Route::get('/facilities/types', [\App\Http\Controllers\FacilityController::class, 'types']);
+    Route::get('/facilities/{facility}', [\App\Http\Controllers\FacilityController::class, 'show']);
+    Route::get('/facilities/{facility}/availability', [\App\Http\Controllers\FacilityBookingController::class, 'availability']);
+    
+    Route::middleware(['role:admin,manager'])->group(function () {
+        Route::post('/facilities', [\App\Http\Controllers\FacilityController::class, 'store']);
+        Route::put('/facilities/{facility}', [\App\Http\Controllers\FacilityController::class, 'update']);
+        Route::delete('/facilities/{facility}', [\App\Http\Controllers\FacilityController::class, 'destroy']);
+    });
+
+    // Facility Bookings
+    Route::apiResource('facility-bookings', \App\Http\Controllers\FacilityBookingController::class);
+    Route::post('/facility-bookings/{facilityBooking}/confirm', [\App\Http\Controllers\FacilityBookingController::class, 'confirm']);
+    Route::post('/facility-bookings/{facilityBooking}/cancel', [\App\Http\Controllers\FacilityBookingController::class, 'cancel']);
 });

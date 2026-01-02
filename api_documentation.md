@@ -199,7 +199,9 @@ Used by Monnify to notify the system of successful payments.
     "total_products": 50,
     "total_sales_count": 120,
     "total_revenue": 50000,
-    "low_stock_alerts": 5
+    "low_stock_alerts": 5,
+    "bookings_today": 3,
+    "bookings_revenue_today": 45000
 }
 ```
 
@@ -223,7 +225,8 @@ Used by Monnify to notify the system of successful payments.
     "unit_sales_count": 45,
     "unit_revenue": 12500,
     "low_stock_alerts": 2,
-    "total_products_in_units": 20
+    "total_products_in_units": 20,
+    "unit_bookings_today": 2
 }
 ```
 
@@ -245,6 +248,95 @@ Used by Monnify to notify the system of successful payments.
 **Action types**: `stock_added`, `stock_updated`, `product_created`, `product_updated`, `stock_request_approved`, `inventory_updated`, `inventory_transfer`.
 
 **Resource types**: `stock`, `product`, `stockRequest`, `inventory`.
+
+---
+
+## 10. Facilities (Bookable Resources)
+
+Manage bookable spaces like football pitches, event halls, courts, and conference rooms.
+
+### Facility Types
+
+| Type              | Description       |
+| ----------------- | ----------------- |
+| `pitch`           | Football pitch    |
+| `event_hall`      | Event venue       |
+| `court`           | Tennis/basketball |
+| `conference_room` | Meeting room      |
+
+### Facilities CRUD
+
+| Method | Endpoint                        | Access    | Description           |
+| ------ | ------------------------------- | --------- | --------------------- |
+| GET    | `/facilities`                   | All       | List (filter: `type`) |
+| GET    | `/facilities/types`             | All       | Get type options      |
+| GET    | `/facilities/{id}`              | All       | Get details           |
+| GET    | `/facilities/{id}/availability` | All       | Check slots for date  |
+| POST   | `/facilities`                   | Admin/Mgr | Create facility       |
+| PUT    | `/facilities/{id}`              | Admin/Mgr | Update facility       |
+| DELETE | `/facilities/{id}`              | Admin/Mgr | Delete facility       |
+
+**Create/Update Body**:
+
+```json
+{
+    "name": "Grand Hall",
+    "type": "event_hall",
+    "description": "500-capacity event venue",
+    "hourly_rate": 25000,
+    "capacity": 500,
+    "unit_id": 1,
+    "is_active": true
+}
+```
+
+**Availability Query**: `GET /facilities/1/availability?date=2026-01-05`
+
+---
+
+## 11. Facility Bookings
+
+| Method | Endpoint                          | Description                       |
+| ------ | --------------------------------- | --------------------------------- |
+| GET    | `/facility-bookings`              | List (filter: date, status, type) |
+| POST   | `/facility-bookings`              | Create booking + Sale record      |
+| GET    | `/facility-bookings/{id}`         | Get details                       |
+| PUT    | `/facility-bookings/{id}`         | Update booking                    |
+| DELETE | `/facility-bookings/{id}`         | Delete booking                    |
+| POST   | `/facility-bookings/{id}/confirm` | Confirm & mark as paid            |
+| POST   | `/facility-bookings/{id}/cancel`  | Cancel booking                    |
+
+**Create Booking**:
+
+```json
+{
+    "facility_id": 1,
+    "customer_name": "John Doe",
+    "customer_phone": "08012345678",
+    "customer_email": "john@example.com",
+    "booking_date": "2026-01-05",
+    "start_time": "14:00",
+    "end_time": "18:00",
+    "payment_method": "transfer",
+    "notes": "Birthday party"
+}
+```
+
+**Response**: Includes auto-generated `booking_reference` (e.g., `FB-20260105-001`) and linked `sale` record.
+
+**Query Filters**:
+
+-   `date`: Single date filter
+-   `start_date` / `end_date`: Date range
+-   `facility_id`: Specific facility
+-   `facility_type`: Filter by type (e.g., `event_hall`)
+-   `status`: `pending`, `confirmed`, `cancelled`
+
+**Booking Status Flow**:
+
+1. Created → `pending`
+2. `/confirm` → `confirmed` (Sale marked as `paid`)
+3. `/cancel` → `cancelled`
 
 ---
 

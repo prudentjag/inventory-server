@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Stock;
 use App\Models\StockRequest;
+use App\Models\FacilityBooking;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Product;
@@ -18,6 +19,7 @@ class DashboardController extends Controller
         $user = $request->user();
 
         if ($user->role === 'admin') {
+            $today = now()->toDateString();
             return response()->json([
                 'role' => 'admin',
                 'total_users' => User::count(),
@@ -25,6 +27,9 @@ class DashboardController extends Controller
                 'total_sales_count' => Sale::where('payment_status', 'paid')->count(),
                 'total_revenue' => Sale::where('payment_status', 'paid')->sum('total_amount'),
                 'low_stock_alerts' => Inventory::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
+                // Facility booking stats
+                'bookings_today' => FacilityBooking::where('booking_date', $today)->where('status', '!=', 'cancelled')->count(),
+                'bookings_revenue_today' => FacilityBooking::where('booking_date', $today)->where('status', 'confirmed')->sum('total_amount'),
             ]);
         }
 
@@ -40,6 +45,7 @@ class DashboardController extends Controller
 
         if (in_array($user->role, ['manager', 'unit_head'])) {
             $unitIds = $user->units()->pluck('units.id');
+            $today = now()->toDateString();
 
             return response()->json([
                 'role' => $user->role,
@@ -51,6 +57,11 @@ class DashboardController extends Controller
                 'total_products_in_units' => Inventory::whereIn('unit_id', $unitIds)
                     ->distinct('product_id')
                     ->count('product_id'),
+                // Facility booking stats for unit
+                'unit_bookings_today' => FacilityBooking::whereHas('facility', fn($q) => $q->whereIn('unit_id', $unitIds))
+                    ->where('booking_date', $today)
+                    ->where('status', '!=', 'cancelled')
+                    ->count(),
             ]);
         }
 
