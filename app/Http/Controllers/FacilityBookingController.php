@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ResponseService;
 use App\Models\Facility;
 use App\Models\FacilityBooking;
 use App\Models\Sale;
@@ -46,7 +47,7 @@ class FacilityBookingController extends Controller
             ->orderBy('start_time', 'asc')
             ->paginate(20);
 
-        return response()->json($bookings);
+        return ResponseService::success($bookings, 'Bookings retrieved successfully');
     }
 
     /**
@@ -70,9 +71,10 @@ class FacilityBookingController extends Controller
 
         // Check if facility is active
         if (!$facility->is_active) {
-            return response()->json([
-                'message' => 'This facility is currently not available for booking'
-            ], 422);
+            return ResponseService::error(
+                'This facility is currently not available for booking',
+                422
+            );
         }
 
         // Check for overlapping bookings
@@ -82,9 +84,10 @@ class FacilityBookingController extends Controller
             $validated['start_time'],
             $validated['end_time']
         )) {
-            return response()->json([
-                'message' => 'This time slot is already booked'
-            ], 422);
+            return ResponseService::error(
+                'This time slot is already booked',
+                422
+            );
         }
 
         // Calculate total amount based on duration
@@ -123,7 +126,7 @@ class FacilityBookingController extends Controller
             // Link sale to booking
             $booking->update(['sale_id' => $sale->id]);
 
-            return response()->json($booking->load(['facility', 'user', 'sale']), 201);
+            return ResponseService::success($booking->load(['facility', 'user', 'sale']), 'Booking created successfully', 201);
         });
     }
 
@@ -132,7 +135,7 @@ class FacilityBookingController extends Controller
      */
     public function show(FacilityBooking $facilityBooking)
     {
-        return response()->json($facilityBooking->load(['facility', 'user', 'sale']));
+        return ResponseService::success($facilityBooking->load(['facility', 'user', 'sale']), 'Booking retrieved successfully');
     }
 
     /**
@@ -142,9 +145,10 @@ class FacilityBookingController extends Controller
     {
         // Cannot update cancelled bookings
         if ($facilityBooking->status === 'cancelled') {
-            return response()->json([
-                'message' => 'Cannot update a cancelled booking'
-            ], 422);
+            return ResponseService::error(
+                'Cannot update a cancelled booking',
+                422
+            );
         }
 
         $validated = $request->validate([
@@ -169,9 +173,10 @@ class FacilityBookingController extends Controller
             $newEnd,
             $facilityBooking->id
         )) {
-            return response()->json([
-                'message' => 'This time slot conflicts with another booking'
-            ], 422);
+            return ResponseService::error(
+                'This time slot conflicts with another booking',
+                422
+            );
         }
 
         // Recalculate total if times changed
@@ -189,7 +194,7 @@ class FacilityBookingController extends Controller
 
         $facilityBooking->update($validated);
 
-        return response()->json($facilityBooking->load(['facility', 'user', 'sale']));
+        return ResponseService::success($facilityBooking->load(['facility', 'user', 'sale']), 'Booking updated successfully');
     }
 
     /**
@@ -198,9 +203,10 @@ class FacilityBookingController extends Controller
     public function confirm(Request $request, FacilityBooking $facilityBooking)
     {
         if ($facilityBooking->status !== 'pending') {
-            return response()->json([
-                'message' => 'Only pending bookings can be confirmed'
-            ], 422);
+            return ResponseService::error(
+                'Only pending bookings can be confirmed',
+                422
+            );
         }
 
         DB::transaction(function () use ($facilityBooking) {
@@ -211,7 +217,7 @@ class FacilityBookingController extends Controller
             }
         });
 
-        return response()->json($facilityBooking->load(['facility', 'user', 'sale']));
+        return ResponseService::success($facilityBooking->load(['facility', 'user', 'sale']), 'Booking confirmed successfully');
     }
 
     /**
@@ -220,9 +226,10 @@ class FacilityBookingController extends Controller
     public function cancel(Request $request, FacilityBooking $facilityBooking)
     {
         if ($facilityBooking->status === 'cancelled') {
-            return response()->json([
-                'message' => 'Booking is already cancelled'
-            ], 422);
+            return ResponseService::error(
+                'Booking is already cancelled',
+                422
+            );
         }
 
         DB::transaction(function () use ($facilityBooking) {
@@ -233,10 +240,10 @@ class FacilityBookingController extends Controller
             }
         });
 
-        return response()->json([
-            'message' => 'Booking cancelled successfully',
-            'booking' => $facilityBooking->load(['facility', 'user', 'sale'])
-        ]);
+        return ResponseService::success(
+            $facilityBooking->load(['facility', 'user', 'sale']),
+            'Booking cancelled successfully'
+        );
     }
 
     /**
@@ -264,7 +271,7 @@ class FacilityBookingController extends Controller
             'close' => '22:00',
         ];
 
-        return response()->json([
+        return ResponseService::success([
             'facility' => $facility,
             'date' => $date,
             'operating_hours' => $operatingHours,

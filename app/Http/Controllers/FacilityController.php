@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\ResponseService;
 use App\Models\Facility;
 use Illuminate\Http\Request;
 
@@ -24,7 +25,7 @@ class FacilityController extends Controller
 
         $facilities = $query->orderBy('type')->orderBy('name')->get();
 
-        return response()->json($facilities);
+        return ResponseService::success($facilities, 'Facilities retrieved successfully');
     }
 
     /**
@@ -44,7 +45,7 @@ class FacilityController extends Controller
 
         $facility = Facility::create($validated);
 
-        return response()->json($facility, 201);
+        return ResponseService::success($facility, 'Facility created successfully');
     }
 
     /**
@@ -52,7 +53,7 @@ class FacilityController extends Controller
      */
     public function show(Facility $facility)
     {
-        return response()->json($facility->load('unit'));
+        return ResponseService::success($facility->load('unit'), 'Facility retrieved successfully');
     }
 
     /**
@@ -72,7 +73,7 @@ class FacilityController extends Controller
 
         $facility->update($validated);
 
-        return response()->json($facility);
+        return ResponseService::success($facility, 'Facility updated successfully');
     }
 
     /**
@@ -87,14 +88,14 @@ class FacilityController extends Controller
             ->exists();
 
         if ($hasActiveBookings) {
-            return response()->json([
-                'message' => 'Cannot delete facility with active future bookings'
-            ], 422);
+            return ResponseService::error(
+                'Cannot delete facility with active future bookings'
+            );
         }
 
         $facility->delete();
 
-        return response()->json(['message' => 'Facility deleted successfully']);
+        return ResponseService::success(['message' => 'Facility deleted successfully']);
     }
 
     /**
