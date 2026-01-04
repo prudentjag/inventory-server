@@ -284,11 +284,14 @@ Manage bookable spaces like football pitches, event halls, courts, and conferenc
     "type": "event_hall",
     "description": "500-capacity event venue",
     "hourly_rate": 25000,
+    "ticket_price": 500,
     "capacity": 500,
     "unit_id": 1,
     "is_active": true
 }
 ```
+
+> **Note**: `hourly_rate` is used for facility bookings (rent by time), while `ticket_price` is the default price for individual tickets (drop-in players).
 
 **Availability Query**: `GET /facilities/1/availability?date=2026-01-05`
 
@@ -339,6 +342,68 @@ Manage bookable spaces like football pitches, event halls, courts, and conferenc
 3. `/cancel` → `cancelled`
 
 ---
+
+## 12. Facility Tickets (Drop-in / Individual Payments)
+
+For individual players who come to use facilities and pay per session (e.g., drop-in football players).
+
+| Method | Endpoint                        | Description                      |
+| ------ | ------------------------------- | -------------------------------- |
+| GET    | `/facility-tickets`             | List tickets                     |
+| POST   | `/facility-tickets`             | Sell a ticket + create Sale      |
+| GET    | `/facility-tickets/{id}`        | Get ticket details               |
+| PUT    | `/facility-tickets/{id}`        | Update ticket info               |
+| POST   | `/facility-tickets/{id}/refund` | Refund a ticket                  |
+| GET    | `/facility-tickets-stats`       | Get ticket statistics for a date |
+
+**Create Ticket**:
+
+```json
+{
+    "facility_id": 1,
+    "customer_name": "John Doe",
+    "customer_phone": "08012345678",
+    "ticket_date": "2026-01-03",
+    "check_in_time": "14:00",
+    "amount": 500,
+    "payment_method": "cash",
+    "notes": "Regular player"
+}
+```
+
+**Response**: Includes auto-generated `ticket_reference` (e.g., `FT-20260103-0001`) and linked `sale` record.
+
+**Query Filters**:
+
+-   `date`: Single date filter
+-   `start_date` / `end_date`: Date range
+-   `facility_id`: Specific facility
+-   `status`: `paid`, `refunded`
+
+**Stats Query**: `GET /facility-tickets-stats?date=2026-01-03&facility_id=1`
+
+**Stats Response**:
+
+```json
+{
+    "total_tickets": 25,
+    "total_revenue": 12500,
+    "payment_breakdown": [
+        { "payment_method": "cash", "count": 15, "amount": 7500 },
+        { "payment_method": "transfer", "count": 10, "amount": 5000 }
+    ]
+}
+```
+
+### Booking vs Ticketing
+
+| Feature     | Booking                           | Ticketing                         |
+| ----------- | --------------------------------- | --------------------------------- |
+| Use Case    | Rent entire facility for a period | Individual drop-in payments       |
+| Pricing     | `hourly_rate` × duration          | Fixed `ticket_price` or custom    |
+| Time Slots  | Start/End time, prevents overlaps | No time restrictions              |
+| Capacity    | One booking per time slot         | Multiple tickets (manual control) |
+| Status Flow | pending → confirmed/cancelled     | paid → refunded                   |
 
 ## Response Format
 

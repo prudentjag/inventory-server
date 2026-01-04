@@ -11,6 +11,7 @@ class Facility extends Model
         'type',
         'description',
         'hourly_rate',
+        'ticket_price',
         'capacity',
         'unit_id',
         'is_active'
@@ -18,6 +19,7 @@ class Facility extends Model
 
     protected $casts = [
         'hourly_rate' => 'decimal:2',
+        'ticket_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
@@ -37,6 +39,11 @@ class Facility extends Model
     public function bookings()
     {
         return $this->hasMany(FacilityBooking::class);
+    }
+
+    public function tickets()
+    {
+        return $this->hasMany(FacilityTicket::class);
     }
 
     public function scopeActive($query)

@@ -87,4 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('facility-bookings', \App\Http\Controllers\FacilityBookingController::class);
     Route::post('/facility-bookings/{facilityBooking}/confirm', [\App\Http\Controllers\FacilityBookingController::class, 'confirm']);
     Route::post('/facility-bookings/{facilityBooking}/cancel', [\App\Http\Controllers\FacilityBookingController::class, 'cancel']);
+
+    // Facility Tickets (drop-in / individual payments)
+    Route::apiResource('facility-tickets', \App\Http\Controllers\FacilityTicketController::class)->except(['destroy']);
+    Route::post('/facility-tickets/{facilityTicket}/refund', [\App\Http\Controllers\FacilityTicketController::class, 'refund']);
+    Route::get('/facility-tickets-stats', [\App\Http\Controllers\FacilityTicketController::class, 'stats']);
 });
