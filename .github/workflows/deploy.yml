@@ -22,9 +22,6 @@ jobs:
           extensions: mbstring, xml, ctype, json, curl
           coverage: none
 
-      - name: update Composer dependencies
-        run: composer update
-
       - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
