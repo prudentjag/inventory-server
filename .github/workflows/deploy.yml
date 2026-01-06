@@ -1,43 +1,56 @@
-name: Deploy Laravel Project on push
+name: Deploy to cPanel via FTP
+
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
 jobs:
-  build-test:
-    runs-on: ${{ matrix.os }}-latest
-    strategy:
-      matrix:
-        os: [ubuntu]
-        node-version: [16.x]
-    steps:
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.2"
-      - uses: actions/checkout@v3
-      - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.ci', '.env');"
-      #- name: Install composer dependencies
-       # run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-      # - name: Use Node.js 12
-      #   uses: actions/setup-node@v2-beta
-      #   with:
-      #     node-version:
-      # - name: ci run build
-      #   run: |
-      #     npm ci
-      #     npm install
-      #     npm run build
-      #   env:
-      #     CI: false
   deploy:
-    needs: build-test
+    name: Deploy to cPanel
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@master
-      - name: deploy-staging
-        uses: SamKirkland/FTP-Deploy-Action@2.0.0
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, ctype, json, curl
+          coverage: none
+
+      - name: install Composer dependencies
+        run: composer install --no-dev --no-scripts --no-autoloader --no-progress --prefer-dist
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
+          timeout: 60000
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env
+            .env.example
+            .editorconfig
+            .phpunit.result.cache
+            phpunit.xml
+            vite.config.js
+            package.json
+            package-lock.json
+            README.md
+            api_documentation.md
+            api_stockist.md
+            tests/**
+            storage/logs/**
+            storage/framework/cache/**
+            storage/framework/sessions/**
+            storage/framework/views/**
