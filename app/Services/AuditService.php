@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Request;
 
 class AuditService
 {
+    
     /**
      * Log an action in the audit logs.
      *
