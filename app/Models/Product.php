@@ -13,6 +13,7 @@ class Product extends Model
         'sku',
         'unit_of_measurement',
         'size',
+        'items_per_set',
         'cost_price',
         'selling_price',
         'expiry_date',
@@ -40,14 +41,6 @@ class Product extends Model
         return $this->hasMany(Stock::class);
     }
 
-    /**
-     * Get items_per_set from the associated brand.
-     * Defaults to 1 if not set (treat as individual items).
-     */
-    public function getItemsPerSetAttribute(): int
-    {
-        return $this->brand->items_per_set ?? 1;
-    }
 
     /**
      * Calculate total individual items available in central stock.

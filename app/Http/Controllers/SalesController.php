@@ -54,7 +54,7 @@ class SalesController extends Controller
 
                 // Check stock and calculate total
                 foreach ($validated['items'] as $item) {
-                    $inventory = Inventory::with('product.brand')
+                    $inventory = Inventory::with('product')
                         ->where('unit_id', $validated['unit_id'])
                         ->where('product_id', $item['product_id'])
                         ->lockForUpdate() // Pessimistic locking
@@ -64,8 +64,8 @@ class SalesController extends Controller
                         throw new \Exception("Insufficient stock for product ID {$item['product_id']}");
                     }
 
-                    // Get items_per_set from brand (default to 1 if not set)
-                    $itemsPerSet = $inventory->product->brand->items_per_set ?? 1;
+                    // Get items_per_set from product (default to 1 if not set)
+                    $itemsPerSet = $inventory->product->items_per_set ?? 1;
                     
                     // Calculate available items (sets × items_per_set)
                     $availableItems = $inventory->quantity * $itemsPerSet;

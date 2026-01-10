@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Brand extends Model
 {
     //
-    protected $fillable = ['name', 'category_id', 'image_path', 'items_per_set'];
+    protected $fillable = ['name', 'category_id', 'image_path'];
 
     protected $appends = ['image_url'];
 

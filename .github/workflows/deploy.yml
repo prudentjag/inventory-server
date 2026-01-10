@@ -1,4 +1,4 @@
-name: Deploy to cPanel via SCP
+name: Deploy to cPanel via FTP
 
 on:
   push:
@@ -28,14 +28,24 @@ jobs:
       - name: Generate optimized autoloader
         run: composer dump-autoload --optimize
 
-      - name: Deploy to cPanel via SCP
-        uses: appleboy/scp-action@v0.1.7
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT }}
-          source: ".,!.git,!.github,!node_modules,!.env,!.env.example,!tests,!.phpunit.result.cache,!phpunit.xml,!README.md,!api_documentation.md,!api_stockist.md"
-          target: ${{ secrets.SSH_TARGET_DIR }}
-          timeout: 120s
-          command_timeout: 10m
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT || 21 }}
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env
+            .env.example
+            **/tests/**
+            .phpunit.result.cache
+            phpunit.xml
+            README.md
+            api_documentation.md
+            api_stockist.md
+            **/Archive/**

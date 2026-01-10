@@ -32,7 +32,7 @@ class Stock extends Model
      */
     public function getTotalItemsAttribute(): int
     {
-        $itemsPerSet = $this->product->brand->items_per_set ?? 1;
+        $itemsPerSet = $this->product->items_per_set ?? 1;
         return $this->quantity * $itemsPerSet;
     }
 }
