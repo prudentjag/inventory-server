@@ -8,6 +8,8 @@ class Stock extends Model
 {
     protected $fillable = ['product_id', 'quantity', 'low_stock_threshold', 'batch_number'];
 
+    protected $appends = ['total_items'];
+
     protected static function boot()
     {
         parent::boot();

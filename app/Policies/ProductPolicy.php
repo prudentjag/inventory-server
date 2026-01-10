@@ -28,7 +28,7 @@ class ProductPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin', 'manager']);
+        return in_array($user->role, ['admin', 'manager', 'stockist']);
     }
 
     /**
@@ -36,7 +36,7 @@ class ProductPolicy
      */
     public function update(User $user, Product $product): bool
     {
-        return in_array($user->role, ['admin', 'manager']);
+        return in_array($user->role, ['admin', 'manager', 'stockist']);
     }
 
     /**
@@ -44,6 +44,6 @@ class ProductPolicy
      */
     public function delete(User $user, Product $product): bool
     {
-        return $user->role === 'admin';
+        return in_array($user->role, ['admin', 'manager', 'stockist']);
     }
 }

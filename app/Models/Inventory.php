@@ -9,8 +9,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Inventory extends Model
 {
-    //
     protected $fillable = ['unit_id', 'product_id', 'quantity', 'low_stock_threshold'];
+
+    protected $appends = ['total_items'];
 
     public function unit()
     {

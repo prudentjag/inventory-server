@@ -31,6 +31,7 @@ class StoreProductRequest extends FormRequest
             'expiry_date' => 'nullable|date',
             'trackable' => 'boolean',
             'size' => 'nullable|in:small,medium,big',
+            'items_per_set' => 'nullable|integer|min:1',
             'quantity' => 'required|integer|min:1',
         ];
     }

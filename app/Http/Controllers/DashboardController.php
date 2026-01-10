@@ -34,9 +34,15 @@ class DashboardController extends Controller
         }
 
         if ($user->role === 'stockist') {
+            // Calculate total items by summing (quantity × items_per_set) for each stock entry
+            $totalItems = Stock::with('product')->get()->sum(function ($stock) {
+                return $stock->quantity * ($stock->product->items_per_set ?? 1);
+            });
+
             return response()->json([
                 'role' => 'stockist',
-                'total_central_stock' => Stock::sum('quantity'),
+                'total_central_stock' => Stock::sum('quantity'),  // in sets
+                'total_central_items' => $totalItems,              // in individual items
                 'total_products_in_stock' => Stock::count(),
                 'low_stock_alerts' => Stock::whereColumn('quantity', '<=', 'low_stock_threshold')->count(),
                 'pending_requests' => StockRequest::where('status', 'pending')->count(),
@@ -61,7 +67,7 @@ class DashboardController extends Controller
                 'unit_bookings_today' => FacilityBooking::whereHas('facility', fn($q) => $q->whereIn('unit_id', $unitIds))
                     ->where('booking_date', $today)
                     ->where('status', '!=', 'cancelled')
-                    ->count(),
+                    ->count()
             ]);
         }
 
