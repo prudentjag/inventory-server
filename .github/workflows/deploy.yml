@@ -1,51 +1,43 @@
-name: Deploy to cPanel via FTP
-
+name: Deploy Laravel Project on push
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
 jobs:
-  deploy:
-    name: Deploy to cPanel
-    runs-on: ubuntu-latest
-
+  build-test:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [ubuntu]
+        node-version: [16.x]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
-          extensions: mbstring, xml, ctype, json, curl
-          coverage: none
-
-      - name: Install Composer dependencies
-        run: composer install --no-dev --no-scripts --no-autoloader --no-progress --prefer-dist
-
-      - name: Generate optimized autoloader
-        run: composer dump-autoload --optimize
-
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT || 21 }}
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            .env
-            .env.example
-            **/tests/**
-            .phpunit.result.cache
-            phpunit.xml
-            README.md
-            api_documentation.md
-            api_stockist.md
-            **/Archive/**
+          php-version: "8.2"
+      - uses: actions/checkout@v3
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.ci', '.env');"
+      #- name: Install composer dependencies
+       # run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      # - name: Use Node.js 12
+      #   uses: actions/setup-node@v2-beta
+      #   with:
+      #     node-version:
+      # - name: ci run build
+      #   run: |
+      #     npm ci
+      #     npm install
+      #     npm run build
+      #   env:
+      #     CI: false
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: deploy-staging
+        uses: SamKirkland/FTP-Deploy-Action@2.0.0
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
