@@ -34,4 +34,36 @@ class Product extends Model
     {
         return $this->hasMany(Inventory::class);
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class);
+    }
+
+    /**
+     * Get items_per_set from the associated brand.
+     * Defaults to 1 if not set (treat as individual items).
+     */
+    public function getItemsPerSetAttribute(): int
+    {
+        return $this->brand->items_per_set ?? 1;
+    }
+
+    /**
+     * Calculate total individual items available in central stock.
+     */
+    public function getTotalItemsInStockAttribute(): int
+    {
+        $totalSets = $this->stocks()->sum('quantity');
+        return $totalSets * $this->items_per_set;
+    }
+
+    /**
+     * Calculate total individual items available in a specific unit's inventory.
+     */
+    public function getTotalItemsInInventory(int $unitId): int
+    {
+        $totalSets = $this->inventories()->where('unit_id', $unitId)->sum('quantity');
+        return $totalSets * $this->items_per_set;
+    }
 }

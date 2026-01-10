@@ -24,17 +24,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users', [AuthController::class, 'users']);
 
     // Units (Admin Managed)
-    Route::middleware(['role:admin,stockist'])->group(function () {
+    Route::middleware(['role:admin,stockist,staff'])->group(function () {
         Route::apiResource('units', UnitController::class);
         Route::post('units/{unit}/users', [UnitController::class, 'assignUser']);
         Route::delete('units/{unit}/users', [UnitController::class, 'removeUser']);
     });
 
     // Products
-    // Products & Metadata
     Route::apiResource('products', ProductController::class);
-    Route::apiResource('brands', BrandController::class);
-    Route::apiResource('categories', CategoryController::class);
+
+    // Brands & Categories (Admin/Stockist only)
+    Route::middleware(['role:admin,stockist,staff'])->group(function () {
+        Route::apiResource('brands', BrandController::class);
+        Route::apiResource('categories', CategoryController::class);
+    });
 
     // Inventory
     Route::middleware(['unit_access'])->group(function () {

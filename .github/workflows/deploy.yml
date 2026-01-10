@@ -1,4 +1,4 @@
-name: Deploy to cPanel via FTP
+name: Deploy to cPanel via SCP
 
 on:
   push:
@@ -22,35 +22,20 @@ jobs:
           extensions: mbstring, xml, ctype, json, curl
           coverage: none
 
-      - name: install Composer dependencies
+      - name: Install Composer dependencies
         run: composer install --no-dev --no-scripts --no-autoloader --no-progress --prefer-dist
 
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Generate optimized autoloader
+        run: composer dump-autoload --optimize
+
+      - name: Deploy to cPanel via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
-          protocol: ftp
-          timeout: 60000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            .env
-            .env.example
-            .editorconfig
-            .phpunit.result.cache
-            phpunit.xml
-            vite.config.js
-            package.json
-            package-lock.json
-            README.md
-            api_documentation.md
-            api_stockist.md
-            tests/**
-            storage/logs/**
-            storage/framework/cache/**
-            storage/framework/sessions/**
-            storage/framework/views/**
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          source: ".,!.git,!.github,!node_modules,!.env,!.env.example,!tests,!.phpunit.result.cache,!phpunit.xml,!README.md,!api_documentation.md,!api_stockist.md"
+          target: ${{ secrets.SSH_TARGET_DIR }}
+          timeout: 120s
+          command_timeout: 10m

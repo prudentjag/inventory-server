@@ -54,16 +54,30 @@ class SalesController extends Controller
 
                 // Check stock and calculate total
                 foreach ($validated['items'] as $item) {
-                    $inventory = Inventory::where('unit_id', $validated['unit_id'])
+                    $inventory = Inventory::with('product.brand')
+                        ->where('unit_id', $validated['unit_id'])
                         ->where('product_id', $item['product_id'])
                         ->lockForUpdate() // Pessimistic locking
                         ->first();
 
-                    if (!$inventory || $inventory->quantity < $item['quantity']) {
+                    if (!$inventory) {
                         throw new \Exception("Insufficient stock for product ID {$item['product_id']}");
                     }
 
-                    $inventory->decrement('quantity', $item['quantity']);
+                    // Get items_per_set from brand (default to 1 if not set)
+                    $itemsPerSet = $inventory->product->brand->items_per_set ?? 1;
+                    
+                    // Calculate available items (sets × items_per_set)
+                    $availableItems = $inventory->quantity * $itemsPerSet;
+                    
+                    // Check if enough items are available
+                    if ($availableItems < $item['quantity']) {
+                        throw new \Exception("Insufficient stock for product ID {$item['product_id']}. Available: {$availableItems} items, Requested: {$item['quantity']} items");
+                    }
+
+                    // Calculate how many sets to deduct (round up to cover the items)
+                    $setsToDeduct = (int) ceil($item['quantity'] / $itemsPerSet);
+                    $inventory->decrement('quantity', $setsToDeduct);
 
                     $lineTotal = $item['quantity'] * $item['unit_price'];
                     $totalAmount += $lineTotal;

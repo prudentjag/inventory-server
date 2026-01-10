@@ -11,7 +11,7 @@ class StoreCategoryRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->role === 'admin';
+        return $this->user()->role === 'admin' || $this->user()->role === 'stockist' || $this->user()->role === 'staff';
     }
 
     /**

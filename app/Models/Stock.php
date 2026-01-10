@@ -26,4 +26,13 @@ class Stock extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    /**
+     * Calculate total individual items from sets.
+     */
+    public function getTotalItemsAttribute(): int
+    {
+        $itemsPerSet = $this->product->brand->items_per_set ?? 1;
+        return $this->quantity * $itemsPerSet;
+    }
 }
