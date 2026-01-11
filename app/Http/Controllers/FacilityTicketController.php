@@ -58,6 +58,7 @@ class FacilityTicketController extends Controller
             'check_in_time' => 'nullable|date_format:H:i',
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:cash,transfer,card',
+            'with_boot' => 'sometimes|boolean',
             'notes' => 'nullable|string',
         ]);
 
@@ -85,6 +86,7 @@ class FacilityTicketController extends Controller
                 'check_in_time' => $validated['check_in_time'] ?? null,
                 'amount' => $validated['amount'],
                 'payment_method' => $validated['payment_method'],
+                'with_boot' => $validated['with_boot'] ?? false,
                 'status' => 'paid',
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -136,6 +138,7 @@ class FacilityTicketController extends Controller
         $validated = $request->validate([
             'customer_name' => 'sometimes|required|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
+            'with_boot' => 'sometimes|boolean',
             'notes' => 'nullable|string',
         ]);
 

@@ -18,12 +18,14 @@ class FacilityTicket extends Model
         'amount',
         'payment_method',
         'status',
+        'with_boot',
         'notes'
     ];
 
     protected $casts = [
         'ticket_date' => 'date',
         'amount' => 'decimal:2',
+        'with_boot' => 'boolean',
     ];
 
     public function facility()
