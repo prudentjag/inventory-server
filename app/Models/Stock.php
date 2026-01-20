@@ -34,6 +34,9 @@ class Stock extends Model
      */
     public function getTotalItemsAttribute(): int
     {
+        if ($this->product->product_type === 'individual') {
+            return $this->quantity;
+        }
         $itemsPerSet = $this->product->items_per_set ?? 1;
         return $this->quantity * $itemsPerSet;
     }

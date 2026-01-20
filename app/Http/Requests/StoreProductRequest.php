@@ -30,8 +30,9 @@ class StoreProductRequest extends FormRequest
             'selling_price' => 'required|numeric',
             'expiry_date' => 'nullable|date',
             'trackable' => 'boolean',
+            'product_type' => 'nullable|in:set,individual',
             'size' => 'nullable|in:small,medium,big',
-            'items_per_set' => 'nullable|integer|min:1',
+            'items_per_set' => 'required_if:product_type,set|integer|min:1',
             'quantity' => 'required|integer|min:1',
         ];
     }

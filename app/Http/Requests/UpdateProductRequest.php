@@ -30,6 +30,8 @@ class UpdateProductRequest extends FormRequest
             'selling_price' => 'numeric',
             'expiry_date' => 'nullable|date',
             'trackable' => 'boolean',
+            'product_type' => 'in:set,individual',
+            'items_per_set' => 'nullable|integer|min:1',
             'size' => 'nullable|in:small,medium,big',
         ];
     }

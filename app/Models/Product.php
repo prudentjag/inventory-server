@@ -17,7 +17,8 @@ class Product extends Model
         'cost_price',
         'selling_price',
         'expiry_date',
-        'trackable'
+        'trackable',
+        'product_type'
     ];
 
     public function brand()
@@ -47,8 +48,11 @@ class Product extends Model
      */
     public function getTotalItemsInStockAttribute(): int
     {
+        if (($this->product_type ?? 'set') === 'individual') {
+            return $this->stocks()->sum('quantity');
+        }
         $totalSets = $this->stocks()->sum('quantity');
-        return $totalSets * $this->items_per_set;
+        return $totalSets * ($this->items_per_set ?? 1);
     }
 
     /**
@@ -56,7 +60,10 @@ class Product extends Model
      */
     public function getTotalItemsInInventory(int $unitId): int
     {
+        if (($this->product_type ?? 'set') === 'individual') {
+            return (int) $this->inventories()->where('unit_id', $unitId)->sum('quantity');
+        }
         $totalSets = $this->inventories()->where('unit_id', $unitId)->sum('quantity');
-        return $totalSets * $this->items_per_set;
+        return (int) ($totalSets * ($this->items_per_set ?? 1));
     }
 }
