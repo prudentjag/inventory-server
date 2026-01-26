@@ -50,6 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sales/history/{unit_id}', [SalesController::class, 'history']);
         Route::get('/sales/{invoice_number}/verify-payment', [SalesController::class, 'verifyPayment']);
         Route::get('/my-sales', [SalesController::class, 'mySales']);
+
+        // Daily Reports
+        Route::get('/daily-reports', [\App\Http\Controllers\DailyReportController::class, 'index']);
+        Route::post('/daily-reports/generate', [\App\Http\Controllers\DailyReportController::class, 'generate']);
+        Route::get('/daily-reports/{dailyReport}', [\App\Http\Controllers\DailyReportController::class, 'show']);
+        Route::patch('/daily-reports/{dailyReport}/remark', [\App\Http\Controllers\DailyReportController::class, 'addRemark']);
     });
 
     // Dashboard
