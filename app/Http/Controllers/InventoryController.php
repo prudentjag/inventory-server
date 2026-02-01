@@ -35,6 +35,22 @@ class InventoryController extends Controller
         }
 
         $validated = $request->validated();
+        
+        // Add support for sets and items in StoreInventoryRequest (or handle here if not in request)
+        $product = \App\Models\Product::findOrFail($validated['product_id']);
+        $itemsPerSet = $product->items_per_set ?? 1;
+
+        $totalToAdd = $validated['quantity'] ?? 0;
+        if (isset($request->sets)) {
+            $totalToAdd += $request->sets * $itemsPerSet;
+        }
+        if (isset($request->items)) {
+            $totalToAdd += $request->items;
+        }
+
+        if ($totalToAdd <= 0 && !isset($validated['low_stock_threshold'])) {
+            return ResponseService::error('No quantity or threshold provided', 400);
+        }
 
         $inventory = Inventory::firstOrNew([
             'unit_id' => $validated['unit_id'],
@@ -42,7 +58,7 @@ class InventoryController extends Controller
         ]);
 
         $oldQuantity = $inventory->exists ? $inventory->quantity : 0;
-        $inventory->quantity = $oldQuantity + $validated['quantity'];
+        $inventory->quantity = $oldQuantity + $totalToAdd;
 
         if (isset($validated['low_stock_threshold'])) {
             $inventory->low_stock_threshold = $validated['low_stock_threshold'];

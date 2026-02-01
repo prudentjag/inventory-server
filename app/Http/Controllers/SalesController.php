@@ -75,15 +75,8 @@ class SalesController extends Controller
                         throw new \Exception("Insufficient stock for product ID {$item['product_id']}. Available: {$availableItems} items, Requested: {$item['quantity']} items");
                     }
 
-                    // Handle stock decrement based on product type
-                    if ($inventory->product->product_type === 'individual') {
-                        // For individual items, deduct the quantity directly
-                        $inventory->decrement('quantity', $item['quantity']);
-                    } else {
-                        // For set-based items, calculate how many sets to deduct (round up to cover the items)
-                        $setsToDeduct = (int) ceil($item['quantity'] / $itemsPerSet);
-                        $inventory->decrement('quantity', $setsToDeduct);
-                    }
+                    // Deduct the exact quantity from inventory (tracked in base units)
+                    $inventory->decrement('quantity', $item['quantity']);
 
                     $lineTotal = $item['quantity'] * $item['unit_price'];
                     $totalAmount += $lineTotal;

@@ -8,7 +8,7 @@ class Stock extends Model
 {
     protected $fillable = ['product_id', 'quantity', 'low_stock_threshold', 'batch_number'];
 
-    protected $appends = ['total_items'];
+    protected $appends = ['total_items', 'formatted_quantity'];
 
     protected static function boot()
     {
@@ -30,14 +30,18 @@ class Stock extends Model
     }
 
     /**
-     * Calculate total individual items from sets.
+     * Return total items (now same as quantity column).
      */
     public function getTotalItemsAttribute(): int
     {
-        if ($this->product->product_type === 'individual') {
-            return $this->quantity;
-        }
-        $itemsPerSet = $this->product->items_per_set ?? 1;
-        return $this->quantity * $itemsPerSet;
+        return (int) $this->quantity;
+    }
+
+    /**
+     * Return human-readable quantity.
+     */
+    public function getFormattedQuantityAttribute(): string
+    {
+        return $this->product->formatQuantity($this->quantity);
     }
 }

@@ -48,11 +48,7 @@ class Product extends Model
      */
     public function getTotalItemsInStockAttribute(): int
     {
-        if (($this->product_type ?? 'set') === 'individual') {
-            return $this->stocks()->sum('quantity');
-        }
-        $totalSets = $this->stocks()->sum('quantity');
-        return $totalSets * ($this->items_per_set ?? 1);
+        return (int) $this->stocks()->sum('quantity');
     }
 
     /**
@@ -60,10 +56,30 @@ class Product extends Model
      */
     public function getTotalItemsInInventory(int $unitId): int
     {
+        return (int) $this->inventories()->where('unit_id', $unitId)->sum('quantity');
+    }
+
+    /**
+     * Format a quantity into sets and items.
+     */
+    public function formatQuantity(int $totalItems): string
+    {
         if (($this->product_type ?? 'set') === 'individual') {
-            return (int) $this->inventories()->where('unit_id', $unitId)->sum('quantity');
+            return "{$totalItems} " . ($this->unit_of_measurement ?? 'items');
         }
-        $totalSets = $this->inventories()->where('unit_id', $unitId)->sum('quantity');
-        return (int) ($totalSets * ($this->items_per_set ?? 1));
+
+        $itemsPerSet = $this->items_per_set ?? 1;
+        $sets = floor($totalItems / $itemsPerSet);
+        $remainder = $totalItems % $itemsPerSet;
+
+        $result = [];
+        if ($sets > 0) {
+            $result[] = "{$sets} " . ($sets == 1 ? 'set' : 'sets');
+        }
+        if ($remainder > 0 || empty($result)) {
+            $result[] = "{$remainder} " . ($remainder == 1 ? ($this->unit_of_measurement ?? 'item') : ($this->unit_of_measurement ?? 'items'));
+        }
+
+        return implode(', ', $result);
     }
 }

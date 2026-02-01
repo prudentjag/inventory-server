@@ -42,9 +42,28 @@ class StockRequestController extends Controller
         $validated = $request->validate([
             'unit_id' => 'required|exists:units,id',
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'nullable|integer|min:0',
+            'sets' => 'nullable|integer|min:0',
+            'items' => 'nullable|integer|min:0',
             'notes' => 'nullable|string'
         ]);
+
+        $product = \App\Models\Product::findOrFail($validated['product_id']);
+        $itemsPerSet = $product->items_per_set ?? 1;
+
+        $totalToRequest = $validated['quantity'] ?? 0;
+        if (isset($validated['sets'])) {
+            $totalToRequest += $validated['sets'] * $itemsPerSet;
+        }
+        if (isset($validated['items'])) {
+            $totalToRequest += $validated['items'];
+        }
+
+        if ($totalToRequest <= 0) {
+            return ResponseService::error('Total quantity to request must be greater than 0', 400);
+        }
+
+        $validated['quantity'] = $totalToRequest;
 
         $validated['requested_by'] = $request->user()->id;
         $validated['status'] = 'pending';

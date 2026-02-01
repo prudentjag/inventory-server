@@ -24,8 +24,10 @@ class StoreInventoryRequest extends FormRequest
         return [
             'unit_id' => 'required|exists:units,id',
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer',
-            'low_stock_threshold' => 'integer'
+            'quantity' => 'nullable|integer',
+            'sets' => 'nullable|integer|min:0',
+            'items' => 'nullable|integer|min:0',
+            'low_stock_threshold' => 'nullable|integer'
         ];
     }
 }
