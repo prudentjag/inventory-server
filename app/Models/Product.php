@@ -64,11 +64,12 @@ class Product extends Model
      */
     public function formatQuantity(int $totalItems): string
     {
-        if (($this->product_type ?? 'set') === 'individual') {
-            return "{$totalItems} " . ($this->unit_of_measurement ?? 'items');
+        $itemsPerSet = $this->items_per_set ?? 1;
+
+        if (($this->product_type ?? 'set') === 'individual' || $itemsPerSet <= 1) {
+            return "{$totalItems} " . ($totalItems == 1 ? ($this->unit_of_measurement ?? 'item') : ($this->unit_of_measurement ?? 'items'));
         }
 
-        $itemsPerSet = $this->items_per_set ?? 1;
         $sets = floor($totalItems / $itemsPerSet);
         $remainder = $totalItems % $itemsPerSet;
 
