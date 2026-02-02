@@ -28,9 +28,13 @@ class DailyReportController extends Controller
         $query = DailyReport::with(['user', 'unit'])
             ->where('unit_id', $request->unit_id);
 
-        // Regular users can only see their own reports
+        // Regular users can only see reports for units they belong to
         if (!in_array($request->user()->role, ['admin', 'stockist'])) {
-            $query->where('user_id', $request->user()->id);
+            $belongsToUnit = $request->user()->units()->where('units.id', $request->unit_id)->exists();
+            if (!$belongsToUnit) {
+                // If not in unit, they can only see reports they created (if any)
+                $query->where('user_id', $request->user()->id);
+            }
         }
 
         $reports = $query->orderBy('report_date', 'desc')
@@ -72,8 +76,12 @@ class DailyReportController extends Controller
      */
     public function show(Request $request, DailyReport $dailyReport)
     {
-        // Ensure user can only view their own reports
-        if ($dailyReport->user_id !== $request->user()->id && !in_array($request->user()->role, ['admin', 'stockist'])) {
+        // Allow if user is owner, admin/stockist, OR belongs to the unit
+        $belongsToUnit = $request->user()->units()->where('units.id', $dailyReport->unit_id)->exists();
+        
+        if ($dailyReport->user_id !== $request->user()->id && 
+            !in_array($request->user()->role, ['admin', 'stockist']) && 
+            !$belongsToUnit) {
             return ResponseService::error('Unauthorized', 403);
         }
 
