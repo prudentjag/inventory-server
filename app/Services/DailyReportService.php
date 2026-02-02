@@ -92,9 +92,7 @@ class DailyReportService
             $stockReceivedByProduct = [];
             foreach ($stockRequests as $request) {
                 $productId = $request->product_id;
-                $product = $request->product;
-                
-                $individualUnits = $this->toIndividualUnits($request->quantity, $product);
+                $individualUnits = $request->quantity;
                 
                 if (!isset($stockReceivedByProduct[$productId])) {
                     $stockReceivedByProduct[$productId] = 0;
@@ -141,7 +139,7 @@ class DailyReportService
                     // If reporting for past, we still have to use current inventory as a baseline
                     // but it might be inaccurate if there were sales between then and now.
                     // However, we'll follow the same logic as before for the first report.
-                    $currentInventoryQuantity = $this->toIndividualUnits($inventory->quantity, $product);
+                    $currentInventoryQuantity = (int) $inventory->quantity;
                     
                     if ($today === now()->toDateString()) {
                         $closingStock = $currentInventoryQuantity;
@@ -168,18 +166,5 @@ class DailyReportService
 
             return $report->load('items.product', 'user', 'unit');
         });
-    }
-
-    /**
-     * Convert a quantity to individual units based on product type.
-     */
-    private function toIndividualUnits(int $quantity, $product): int
-    {
-        if (($product->product_type ?? 'set') === 'individual') {
-            return $quantity;
-        }
-        
-        $itemsPerSet = $product->items_per_set ?? 1;
-        return $quantity * $itemsPerSet;
     }
 }

@@ -73,7 +73,7 @@ class ProductTypeStockTest extends TestCase
         $product = Product::find($productId);
 
         $this->assertEquals('set', $product->product_type);
-        $this->assertEquals(60, $product->total_items_in_stock); // 5 * 12
+        $this->assertEquals(5, $product->total_items_in_stock); // Stored directly as items
     }
 
     public function test_individual_product_sale_decrement()
@@ -137,7 +137,7 @@ class ProductTypeStockTest extends TestCase
         Inventory::create([
             'unit_id' => $this->unit->id,
             'product_id' => $product->id,
-            'quantity' => 2, // 2 crates = 24 bottles
+            'quantity' => 24, // 2 crates * 12 bottles = 24 bottles
         ]);
 
         // Sell 5 bottles
@@ -159,7 +159,7 @@ class ProductTypeStockTest extends TestCase
             ->where('product_id', $product->id)
             ->first();
 
-        // Should deduct 1 full crate, leaving 1 crate (ceil(5/12) = 1)
-        $this->assertEquals(1, $inventory->quantity);
+        // Should deduct 5 bottles, leaving 19 bottles (24 - 5 = 19)
+        $this->assertEquals(19, $inventory->quantity);
     }
 }

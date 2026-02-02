@@ -64,11 +64,8 @@ class SalesController extends Controller
                         throw new \Exception("Insufficient stock for product ID {$item['product_id']}");
                     }
 
-                    // Get items_per_set from product (default to 1 if not set)
-                    $itemsPerSet = $inventory->product->items_per_set ?? 1;
-                    
-                    // Calculate available items (sets × items_per_set)
-                    $availableItems = $inventory->quantity * $itemsPerSet;
+                    // Calculate available items (stored directly in quantity)
+                    $availableItems = $inventory->quantity;
                     
                     // Check if enough items are available
                     if ($availableItems < $item['quantity']) {
