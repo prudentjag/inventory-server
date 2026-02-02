@@ -23,9 +23,9 @@ class DailyReportService
      * @return DailyReport
      * @throws \Exception
      */
-    public function generate(User $user, int $unitId, ?array $damages = null, ?string $remark = null): DailyReport
+    public function generate(User $user, $date = null, int $unitId, ?array $damages = null, ?string $remark = null): DailyReport
     {
-        $today = now()->toDateString();
+        $today = $date ?? now()->toDateString();
 
         // Check if report already exists for this user/unit/date
         $existingReport = DailyReport::where('user_id', $user->id)
@@ -34,18 +34,19 @@ class DailyReportService
             ->first();
 
         if ($existingReport) {
-            throw new \Exception('A daily report for this unit has already been generated today.');
+            $formattedDate = date('Y-m-d', strtotime($today));
+            throw new \Exception("A daily report for this unit has already been generated for $formattedDate.");
         }
 
         return DB::transaction(function () use ($user, $unitId, $today, $damages, $remark) {
-            // Get all inventory items for this unit with product info
+            // Get all products that have inventory at this unit
             $inventoryItems = Inventory::with('product')
                 ->where('unit_id', $unitId)
                 ->get();
 
             // Get the previous day's closing report for opening stock reference
-            $previousReport = DailyReport::where('user_id', $user->id)
-                ->where('unit_id', $unitId)
+            // This is crucial for consistency.
+            $previousReport = DailyReport::where('unit_id', $unitId)
                 ->where('report_date', '<', $today)
                 ->orderBy('report_date', 'desc')
                 ->first();
@@ -55,10 +56,9 @@ class DailyReportService
                 $previousItems = $previousReport->items->keyBy('product_id');
             }
 
-            // Get today's sales for this unit by this user
+            // Get today's sales for this unit
             $todaySales = Sale::with('saleItems.product')
                 ->where('unit_id', $unitId)
-                ->where('user_id', $user->id)
                 ->whereDate('created_at', $today)
                 ->get();
 
@@ -68,13 +68,14 @@ class DailyReportService
             $totalItemsSold = 0;
 
             foreach ($todaySales as $sale) {
+                // We sum all sales at this unit, even if made by other users, 
+                // because the report is for the unit's stock level.
                 $totalSalesAmount += $sale->total_amount;
                 foreach ($sale->saleItems as $item) {
                     $productId = $item->product_id;
                     if (!isset($salesByProduct[$productId])) {
                         $salesByProduct[$productId] = 0;
                     }
-                    // Sales quantity is already in individual units
                     $salesByProduct[$productId] += $item->quantity;
                     $totalItemsSold += $item->quantity;
                 }
@@ -93,7 +94,6 @@ class DailyReportService
                 $productId = $request->product_id;
                 $product = $request->product;
                 
-                // Convert quantity to individual units
                 $individualUnits = $this->toIndividualUnits($request->quantity, $product);
                 
                 if (!isset($stockReceivedByProduct[$productId])) {
@@ -125,26 +125,34 @@ class DailyReportService
                 $productId = $inventory->product_id;
                 $product = $inventory->product;
 
-                // Current closing stock in individual units (current inventory)
-                $closingStock = $this->toIndividualUnits($inventory->quantity, $product);
-
-                // Stock received today (already in individual units)
                 $received = $stockReceivedByProduct[$productId] ?? 0;
-
-                // Quantity sold today (already in individual units)
                 $sold = $salesByProduct[$productId] ?? 0;
-
-                // Damages for this product (assumed to be in individual units)
                 $productDamages = $damages[$productId] ?? 0;
 
                 // Opening stock calculation
                 if (isset($previousItems[$productId])) {
-                    // Use previous report's closing stock
+                    // Standard case: use previous report's closing stock
                     $openingStock = $previousItems[$productId]->closing_stock;
+                    // Closing stock = Opening + Received - Sold - Damages
+                    $closingStock = $openingStock + $received - $sold - $productDamages;
                 } else {
-                    // First report: calculate opening stock backwards
-                    // Opening = Closing + Sold - Received + Damages
-                    $openingStock = $closingStock + $sold - $received + $productDamages;
+                    // First report for this product/unit: 
+                    // If reporting for today, use current inventory as closing.
+                    // If reporting for past, we still have to use current inventory as a baseline
+                    // but it might be inaccurate if there were sales between then and now.
+                    // However, we'll follow the same logic as before for the first report.
+                    $currentInventoryQuantity = $this->toIndividualUnits($inventory->quantity, $product);
+                    
+                    if ($today === now()->toDateString()) {
+                        $closingStock = $currentInventoryQuantity;
+                        $openingStock = $closingStock + $sold - $received + $productDamages;
+                    } else {
+                        // For retrospective first reports, we just calculate based on transactions
+                        // But we don't know the starting point. Let's assume current inventory
+                        // is the only truth if no previous reports exist.
+                        $closingStock = $currentInventoryQuantity; // This is a fallback
+                        $openingStock = $closingStock + $sold - $received + $productDamages;
+                    }
                 }
 
                 DailyReportItem::create([

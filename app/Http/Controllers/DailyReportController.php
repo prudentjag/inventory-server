@@ -25,10 +25,15 @@ class DailyReportController extends Controller
             'unit_id' => 'required|exists:units,id',
         ]);
 
-        $reports = DailyReport::with(['user', 'unit'])
-            ->where('user_id', $request->user()->id)
-            ->where('unit_id', $request->unit_id)
-            ->orderBy('report_date', 'desc')
+        $query = DailyReport::with(['user', 'unit'])
+            ->where('unit_id', $request->unit_id);
+
+        // Regular users can only see their own reports
+        if (!in_array($request->user()->role, ['admin', 'stockist'])) {
+            $query->where('user_id', $request->user()->id);
+        }
+
+        $reports = $query->orderBy('report_date', 'desc')
             ->paginate(20);
 
         return ResponseService::success($reports, 'Daily reports fetched successfully');
@@ -41,6 +46,7 @@ class DailyReportController extends Controller
     {
         $validated = $request->validate([
             'unit_id' => 'required|exists:units,id',
+            'date' => 'nullable|date|before_or_equal:today',
             'damages' => 'nullable|array',
             'damages.*' => 'integer|min:0',
             'remark' => 'nullable|string|max:1000',
@@ -49,6 +55,7 @@ class DailyReportController extends Controller
         try {
             $report = $this->reportService->generate(
                 $request->user(),
+                $validated['date'] ?? null,
                 $validated['unit_id'],
                 $validated['damages'] ?? null,
                 $validated['remark'] ?? null
