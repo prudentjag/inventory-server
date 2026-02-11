@@ -230,4 +230,88 @@ class DailyReportTest extends TestCase
         // Closing stock should match current inventory
         $this->assertEquals(50, $item->closing_stock);
     }
+
+    public function test_first_report_prevents_negative_opening_stock()
+    {
+        // Setup: Current inventory is 5, but we "received" 10 and "sold" 2 today.
+        // Logic would suggest opening was 5 - 10 + 2 = -3.
+        // Our fix should cap opening at 0 and closing at received - sold = 8 (clamped to current inventory or adjusted)
+        // Wait, the fix caps opening at 0 and sets closing = max(0, received - sold - damages) = 8.
+       
+        $product = Product::create([
+            'name' => 'Negative Test',
+            'brand_id' => $this->brand->id,
+            'sku' => 'NEG-001',
+            'unit_of_measurement' => 'bottle',
+            'cost_price' => 100,
+            'selling_price' => 150,
+            'product_type' => 'individual',
+        ]);
+
+        Inventory::create([
+            'unit_id' => $this->unit->id,
+            'product_id' => $product->id,
+            'quantity' => 5,
+        ]);
+
+        // Mock a stock request (received today)
+        StockRequest::create([
+            'unit_id' => $this->unit->id,
+            'product_id' => $product->id,
+            'quantity' => 10,
+            'status' => 'approved',
+            'requested_by' => $this->user->id,
+            'updated_at' => now(),
+        ]);
+
+        // Mock a sale (sold today)
+        $sale = Sale::create([
+            'unit_id' => $this->unit->id,
+            'user_id' => $this->user->id,
+            'invoice_number' => 'INV-NEG001',
+            'total_amount' => 300,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'created_at' => now(),
+        ]);
+
+        SaleItem::create([
+            'sale_id' => $sale->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'unit_price' => 150,
+            'total_price' => 300,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson('/api/daily-reports/generate', [
+            'unit_id' => $this->unit->id,
+        ]);
+
+        $response->assertStatus(201);
+
+        $report = DailyReport::first();
+        $item = $report->items->where('product_id', $product->id)->first();
+
+        // Opening stock should be capped at 0
+        $this->assertEquals(0, $item->opening_stock);
+        // Closing stock = max(0, received - sold) = 10 - 2 = 8
+        $this->assertEquals(8, $item->closing_stock);
+    }
+
+    public function test_user_can_delete_report()
+    {
+        // Generate a report first
+        $this->actingAs($this->user)->postJson('/api/daily-reports/generate', [
+            'unit_id' => $this->unit->id,
+        ]);
+
+        $report = DailyReport::first();
+        $this->assertNotNull($report);
+
+        $response = $this->actingAs($this->user)->deleteJson("/api/daily-reports/{$report->id}");
+
+        $response->assertStatus(200);
+        $this->assertEquals(0, DailyReport::count());
+        $this->assertEquals(0, DailyReportItem::count());
+    }
 }

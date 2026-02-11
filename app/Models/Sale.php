@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Sale extends Model
 {
     //
-    protected $fillable = ['unit_id', 'user_id', 'invoice_number', 'total_amount', 'payment_method', 'payment_status', 'transaction_reference'];
+    protected $fillable = ['unit_id', 'user_id', 'invoice_number', 'table_number', 'total_amount', 'payment_method', 'payment_status', 'transaction_reference'];
 
     public function unit()
     {

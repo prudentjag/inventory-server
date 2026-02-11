@@ -113,4 +113,21 @@ class DailyReportController extends Controller
             'Remark updated successfully'
         );
     }
+    /**
+     * Delete a daily report (Admin or owner only).
+     */
+    public function destroy(Request $request, DailyReport $dailyReport)
+    {
+        // Allow if user is owner OR admin/stockist
+        if ($dailyReport->user_id !== $request->user()->id && 
+            !in_array($request->user()->role, ['admin', 'stockist'])) {
+            return ResponseService::error('Unauthorized', 403);
+        }
+
+        // Delete associated items first (if not using cascade delete in DB)
+        $dailyReport->items()->delete();
+        $dailyReport->delete();
+
+        return ResponseService::success(null, 'Daily report deleted successfully');
+    }
 }

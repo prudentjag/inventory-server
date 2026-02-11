@@ -17,6 +17,10 @@ use App\Http\Controllers\PaymentWebhookController;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/webhooks/monnify', [PaymentWebhookController::class, 'handleMonnify']);
 
+// Public Menu Routes
+Route::get('/menu/{unit_id}', [\App\Http\Controllers\PublicMenuController::class, 'index']);
+Route::post('/menu/order', [\App\Http\Controllers\PublicMenuController::class, 'placeOrder']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('register', [AuthController::class, 'register']);
@@ -48,6 +52,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Sales
         Route::post('/sales', [SalesController::class, 'store']);
         Route::get('/sales/history/{unit_id}', [SalesController::class, 'history']);
+        Route::get('/sales/{invoice_number}', [SalesController::class, 'show']);
+        Route::patch('/sales/{invoice_number}/claim', [SalesController::class, 'claim']);
+        Route::post('/sales/{invoice_number}/items', [SalesController::class, 'addItems']);
+        Route::patch('/sales/{invoice_number}/mark-paid', [SalesController::class, 'markPaid']);
         Route::get('/sales/{invoice_number}/verify-payment', [SalesController::class, 'verifyPayment']);
         Route::get('/my-sales', [SalesController::class, 'mySales']);
 
@@ -56,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/daily-reports/generate', [\App\Http\Controllers\DailyReportController::class, 'generate']);
         Route::get('/daily-reports/{dailyReport}', [\App\Http\Controllers\DailyReportController::class, 'show']);
         Route::patch('/daily-reports/{dailyReport}/remark', [\App\Http\Controllers\DailyReportController::class, 'addRemark']);
+        Route::delete('/daily-reports/{dailyReport}', [\App\Http\Controllers\DailyReportController::class, 'destroy']);
     });
 
     // Dashboard

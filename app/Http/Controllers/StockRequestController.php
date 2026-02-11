@@ -49,14 +49,40 @@ class StockRequestController extends Controller
         ]);
 
         $product = \App\Models\Product::findOrFail($validated['product_id']);
+
+        // Block unit-produced products from stock requests
+        if ($product->source_type === 'unit_produced') {
+            return ResponseService::error(
+                'This product is unit-produced and cannot be requested from central stock. Please add it directly to your unit inventory.',
+                400
+            );
+        }
+
         $itemsPerSet = $product->items_per_set ?? 1;
 
-        $totalToRequest = $validated['quantity'] ?? 0;
-        if (isset($validated['sets'])) {
-            $totalToRequest += $validated['sets'] * $itemsPerSet;
+        // Ensure only one input method is used to prevent double-counting
+        $hasQuantity = isset($validated['quantity']) && $validated['quantity'] > 0;
+        $hasSetsOrItems = (isset($validated['sets']) && $validated['sets'] > 0) 
+                       || (isset($validated['items']) && $validated['items'] > 0);
+
+        if ($hasQuantity && $hasSetsOrItems) {
+            return ResponseService::error(
+                'Cannot provide both "quantity" and "sets/items". Please use one input method or the other.',
+                400
+            );
         }
-        if (isset($validated['items'])) {
-            $totalToRequest += $validated['items'];
+
+        // Calculate total based on the input method used
+        if ($hasQuantity) {
+            $totalToRequest = $validated['quantity'];
+        } else {
+            $totalToRequest = 0;
+            if (isset($validated['sets'])) {
+                $totalToRequest += $validated['sets'] * $itemsPerSet;
+            }
+            if (isset($validated['items'])) {
+                $totalToRequest += $validated['items'];
+            }
         }
 
         if ($totalToRequest <= 0) {

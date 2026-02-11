@@ -28,8 +28,10 @@ class StoreSaleRequest extends FormRequest
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric',
             'payment_method' => 'required|string',
-            'payment_status' => 'string',
-            'transaction_reference' => 'nullable|string'
+            'payment_status' => 'nullable|string|in:pending,paid',
+            'server_id' => 'nullable|exists:users,id',
+            'transaction_reference' => 'nullable|string',
+            'table_number' => 'nullable|string'
         ];
     }
 }

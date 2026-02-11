@@ -59,4 +59,40 @@ class User extends Authenticatable
     {
         return $this->hasMany(Sale::class);
     }
+
+    /**
+     * Valid roles in the system.
+     */
+    public const ROLES = [
+        'admin',
+        'staff',
+        'manager',
+        'unit_head',
+        'stockist',
+        'server',
+    ];
+
+    /**
+     * Check if user is a server.
+     */
+    public function isServer(): bool
+    {
+        return $this->role === 'server';
+    }
+
+    /**
+     * Check if user can manage sales (admin-level access).
+     */
+    public function canManageSales(): bool
+    {
+        return in_array($this->role, ['admin', 'stockist']);
+    }
+
+    /**
+     * Check if user can create sales.
+     */
+    public function canCreateSales(): bool
+    {
+        return in_array($this->role, ['admin', 'stockist', 'manager', 'unit_head', 'server', 'staff']);
+    }
 }

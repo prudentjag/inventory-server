@@ -33,6 +33,7 @@ class UpdateProductRequest extends FormRequest
             'product_type' => 'in:set,individual',
             'items_per_set' => 'nullable|integer|min:1',
             'size' => 'nullable|in:small,medium,big',
+            'source_type' => 'in:central_stock,unit_produced',
         ];
     }
 }

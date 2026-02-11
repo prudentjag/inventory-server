@@ -18,7 +18,8 @@ class Product extends Model
         'selling_price',
         'expiry_date',
         'trackable',
-        'product_type'
+        'product_type',
+        'source_type'
     ];
 
     public function brand()
@@ -82,5 +83,29 @@ class Product extends Model
         }
 
         return implode(', ', $result);
+    }
+
+    /**
+     * Scope to filter products from central stock.
+     */
+    public function scopeCentralStock($query)
+    {
+        return $query->where('source_type', 'central_stock');
+    }
+
+    /**
+     * Scope to filter unit-produced products.
+     */
+    public function scopeUnitProduced($query)
+    {
+        return $query->where('source_type', 'unit_produced');
+    }
+
+    /**
+     * Check if product is from central stock.
+     */
+    public function isCentralStockProduct(): bool
+    {
+        return $this->source_type === 'central_stock';
     }
 }

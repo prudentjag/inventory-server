@@ -40,12 +40,29 @@ class InventoryController extends Controller
         $product = \App\Models\Product::findOrFail($validated['product_id']);
         $itemsPerSet = $product->items_per_set ?? 1;
 
-        $totalToAdd = $validated['quantity'] ?? 0;
-        if (isset($request->sets)) {
-            $totalToAdd += $request->sets * $itemsPerSet;
+        // Ensure only one input method is used to prevent double-counting
+        $hasQuantity = isset($validated['quantity']) && $validated['quantity'] > 0;
+        $hasSetsOrItems = (isset($request->sets) && $request->sets > 0) 
+                       || (isset($request->items) && $request->items > 0);
+
+        if ($hasQuantity && $hasSetsOrItems) {
+            return ResponseService::error(
+                'Cannot provide both "quantity" and "sets/items". Please use one input method or the other.',
+                400
+            );
         }
-        if (isset($request->items)) {
-            $totalToAdd += $request->items;
+
+        // Calculate total based on the input method used
+        if ($hasQuantity) {
+            $totalToAdd = $validated['quantity'];
+        } else {
+            $totalToAdd = 0;
+            if (isset($request->sets)) {
+                $totalToAdd += $request->sets * $itemsPerSet;
+            }
+            if (isset($request->items)) {
+                $totalToAdd += $request->items;
+            }
         }
 
         if ($totalToAdd <= 0 && !isset($validated['low_stock_threshold'])) {

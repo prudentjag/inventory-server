@@ -135,21 +135,23 @@ class DailyReportService
                     $closingStock = $openingStock + $received - $sold - $productDamages;
                 } else {
                     // First report for this product/unit: 
-                    // If reporting for today, use current inventory as closing.
-                    // If reporting for past, we still have to use current inventory as a baseline
-                    // but it might be inaccurate if there were sales between then and now.
-                    // However, we'll follow the same logic as before for the first report.
+                    // We reverse calculate opening stock from current inventory but prevent negative values.
                     $currentInventoryQuantity = (int) $inventory->quantity;
                     
-                    if ($today === now()->toDateString()) {
-                        $closingStock = $currentInventoryQuantity;
-                        $openingStock = $closingStock + $sold - $received + $productDamages;
+                    // Calculation: Opening = CurrentClosing - Received + Sold + Damages
+                    // Note: If reporting for today, CurrentClosing is current inventory.
+                    // If retrospective, it's still our best baseline.
+                    $calculatedOpeningStock = $currentInventoryQuantity - $received + $sold + $productDamages;
+                    
+                    if ($calculatedOpeningStock < 0) {
+                        // If logic leads to negative opening stock, it means there are missing 
+                        // historical transactions or current inventory is lower than expected.
+                        // We default opening to 0 and set closing as the remainder.
+                        $openingStock = 0;
+                        $closingStock = max(0, $received - $sold - $productDamages);
                     } else {
-                        // For retrospective first reports, we just calculate based on transactions
-                        // But we don't know the starting point. Let's assume current inventory
-                        // is the only truth if no previous reports exist.
-                        $closingStock = $currentInventoryQuantity; // This is a fallback
-                        $openingStock = $closingStock + $sold - $received + $productDamages;
+                        $openingStock = $calculatedOpeningStock;
+                        $closingStock = $currentInventoryQuantity;
                     }
                 }
 

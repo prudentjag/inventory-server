@@ -29,16 +29,22 @@ class ProductController extends Controller
 
         $product = Product::create($validated);
 
-        // Always add to central stock
-        $stock = Stock::create([
-            'product_id' => $product->id,
-            'quantity' => $quantity,
-        ]);
+        // Only add to central stock if source_type is 'central_stock'
+        if ($product->source_type === 'central_stock') {
+            $stock = Stock::create([
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+            ]);
 
-        AuditService::log('product_created', $product->id, $product, null, $product->toArray(), "Product created: {$product->name}");
-        AuditService::log('stock_added', $product->id, $stock, null, $stock->toArray(), "Initial stock added for product: {$product->name}");
+            AuditService::log('product_created', $product->id, $product, null, $product->toArray(), "Product created: {$product->name}");
+            AuditService::log('stock_added', $product->id, $stock, null, $stock->toArray(), "Initial stock added for product: {$product->name}");
 
-        return ResponseService::success($product->load(['brand', 'category']), 'Product created and added to central stock', 201);
+            return ResponseService::success($product->load(['brand', 'category']), 'Product created and added to central stock', 201);
+        }
+
+        // Unit-produced products don't go to central stock
+        AuditService::log('product_created', $product->id, $product, null, $product->toArray(), "Unit-produced product created: {$product->name}");
+        return ResponseService::success($product->load(['brand', 'category']), 'Unit-produced product created successfully', 201);
     }
 
     public function show(string $id)

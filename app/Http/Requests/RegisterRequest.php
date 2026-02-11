@@ -11,7 +11,7 @@ class RegisterRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->role === 'admin';
+        return $this->user()->role === 'admin' || $this->user()->role === 'stockist';
     }
 
     /**
@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
             "email"=> "required|email|unique:users,email",
             "password"=> "required|min:8",
             "name"=> "required",
-            "role"=> "required|in:admin,staff,manager,unit_head,stockist",
+            "role"=> "required|in:admin,staff,manager,unit_head,stockist,server",
             "is_active"=> "required|boolean",
         ];
     }
