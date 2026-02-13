@@ -18,10 +18,38 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $request->validate(['unit_id' => 'required|exists:units,id']);
+        $unitId = $request->unit_id;
 
-        return ResponseService::success( Inventory::with('product','product.brand','product.category')
-            ->where('unit_id', $request->unit_id)
-            ->get(), "Inventory for unit {$request->unit_id}");
+        // Get existing inventory records
+        $inventory = Inventory::with(['product.brand', 'product.category'])
+            ->where('unit_id', $unitId)
+            ->get();
+
+        $existingProductIds = $inventory->pluck('product_id')->toArray();
+
+        // Dynamically include all 'unit_produced' products that aren't in the inventory table yet
+        $unitProducedProducts = \App\Models\Product::where('source_type', 'unit_produced')
+            ->whereNotIn('id', $existingProductIds)
+            ->with(['brand', 'category'])
+            ->get();
+
+        // Create virtual inventory entries for on-demand items
+        $virtualEntries = $unitProducedProducts->map(function ($product) use ($unitId) {
+            $iv = new Inventory([
+                'unit_id' => (int)$unitId,
+                'product_id' => $product->id,
+                'quantity' => 0,
+                'low_stock_threshold' => 0,
+            ]);
+            // Manually load the relation so the frontend gets the expected structure
+            $iv->setRelation('product', $product);
+            return $iv;
+        });
+
+        // Merge actual and virtual inventory
+        $combined = $inventory->concat($virtualEntries);
+
+        return ResponseService::success($combined, "Inventory for unit {$unitId}");
     }
 
     /**

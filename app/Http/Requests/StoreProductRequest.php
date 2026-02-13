@@ -33,8 +33,8 @@ class StoreProductRequest extends FormRequest
             'product_type' => 'nullable|in:set,individual',
             'size' => 'nullable|in:small,medium,big',
             'items_per_set' => 'required_if:product_type,set|integer|min:1',
-            'source_type' => 'nullable|in:central_stock,unit_produced',
-            'quantity' => 'required|integer|min:1',
+            'source_type' => 'required|in:central_stock,unit_produced',
+            'quantity' => 'required_if:source_type,central_stock|integer|min:0',
         ];
     }
 }

@@ -23,6 +23,11 @@ class PublicMenuController extends Controller
             return ResponseService::error('Unit not found or inactive', 404);
         }
 
+        $existingProductIds = Inventory::where('unit_id', $unit_id)
+            ->where('quantity', '>', 0)
+            ->pluck('product_id')
+            ->toArray();
+
         $menu = Inventory::with(['product.brand', 'product.category'])
             ->where('unit_id', $unit_id)
             ->where('quantity', '>', 0)
@@ -33,7 +38,7 @@ class PublicMenuController extends Controller
                     'name' => $inventory->product->name,
                     'brand' => $inventory->product->brand->name ?? null,
                     'category' => $inventory->product->category->name ?? null,
-                    'image' => $inventory->product->image_path,
+                    'image' => $inventory->product->brand->image_url ?? null,
                     'price' => $inventory->product->selling_price,
                     'available_quantity' => $inventory->quantity,
                     'unit_of_measurement' => $inventory->product->unit_of_measurement,
@@ -41,9 +46,31 @@ class PublicMenuController extends Controller
                 ];
             });
 
+        // Dynamically include all 'unit_produced' products that aren't already in the menu
+        $unitProducedProducts = Product::with(['brand', 'category'])
+            ->where('source_type', 'unit_produced')
+            ->whereNotIn('id', $existingProductIds)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'brand' => $product->brand->name ?? null,
+                    'category' => $product->category->name ?? null,
+                    'image' => $product->brand->image_url ?? null,
+                    'price' => $product->selling_price,
+                    'available_quantity' => 0,
+                    'unit_of_measurement' => $product->unit_of_measurement,
+                    'source_type' => $product->source_type,
+                ];
+            });
+
+        // Merge actual inventory items and virtual on-demand items
+        $combinedMenu = $menu->concat($unitProducedProducts);
+
         return ResponseService::success([
             'unit_name' => $unit->name,
-            'menu' => $menu
+            'menu' => $combinedMenu
         ], "Menu for {$unit->name} fetched successfully");
     }
 
@@ -69,19 +96,23 @@ class PublicMenuController extends Controller
                 $unit = Unit::find($validated['unit_id']);
 
                 foreach ($validated['items'] as $item) {
-                    $inventory = Inventory::where('unit_id', $validated['unit_id'])
-                        ->where('product_id', $item['product_id'])
-                        ->lockForUpdate()
-                        ->first();
+                    $product = Product::findOrFail($item['product_id']);
 
-                    if (!$inventory || $inventory->quantity < $item['quantity']) {
-                        $productName = Product::find($item['product_id'])->name ?? 'Product';
-                        throw new \Exception("Insufficient stock for {$productName}");
+                    // Only check stock and decrement for non-unit-produced items
+                    if ($product->source_type !== 'unit_produced') {
+                        $inventory = Inventory::where('unit_id', $validated['unit_id'])
+                            ->where('product_id', $item['product_id'])
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$inventory || $inventory->quantity < $item['quantity']) {
+                            $available = $inventory ? $inventory->quantity : 0;
+                            throw new \Exception("Insufficient stock for {$product->name}. Available: {$available}, Requested: {$item['quantity']}");
+                        }
+
+                        $inventory->decrement('quantity', $item['quantity']);
                     }
 
-                    $inventory->decrement('quantity', $item['quantity']);
-
-                    $product = $inventory->product;
                     $lineTotal = $item['quantity'] * $product->selling_price;
                     $totalAmount += $lineTotal;
 

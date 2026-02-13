@@ -54,26 +54,22 @@ class SalesController extends Controller
 
                 // Check stock and calculate total
                 foreach ($validated['items'] as $item) {
-                    $inventory = Inventory::with('product')
-                        ->where('unit_id', $validated['unit_id'])
-                        ->where('product_id', $item['product_id'])
-                        ->lockForUpdate() // Pessimistic locking
-                        ->first();
-
-                    if (!$inventory) {
-                        throw new \Exception("Insufficient stock for product ID {$item['product_id']}");
-                    }
-
-                    // Calculate available items (stored directly in quantity)
-                    $availableItems = $inventory->quantity;
+                    $product = \App\Models\Product::findOrFail($item['product_id']);
                     
-                    // Check if enough items are available
-                    if ($availableItems < $item['quantity']) {
-                        throw new \Exception("Insufficient stock for product ID {$item['product_id']}. Available: {$availableItems} items, Requested: {$item['quantity']} items");
-                    }
+                    // Only check stock and decrement for non-unit-produced items
+                    if ($product->source_type !== 'unit_produced') {
+                        $inventory = Inventory::where('unit_id', $validated['unit_id'])
+                            ->where('product_id', $item['product_id'])
+                            ->lockForUpdate()
+                            ->first();
 
-                    // Deduct the exact quantity from inventory (tracked in base units)
-                    $inventory->decrement('quantity', $item['quantity']);
+                        if (!$inventory || $inventory->quantity < $item['quantity']) {
+                            $available = $inventory ? $inventory->quantity : 0;
+                            throw new \Exception("Insufficient stock for {$product->name}. Available: {$available}, Requested: {$item['quantity']}");
+                        }
+
+                        $inventory->decrement('quantity', $item['quantity']);
+                    }
 
                     $lineTotal = $item['quantity'] * $item['unit_price'];
                     $totalAmount += $lineTotal;
@@ -277,16 +273,22 @@ class SalesController extends Controller
                 $itemsToCreate = [];
 
                 foreach ($validated['items'] as $item) {
-                    $inventory = Inventory::where('unit_id', $sale->unit_id)
-                        ->where('product_id', $item['product_id'])
-                        ->lockForUpdate()
-                        ->first();
+                    $product = \App\Models\Product::findOrFail($item['product_id']);
 
-                    if (!$inventory || $inventory->quantity < $item['quantity']) {
-                        throw new \Exception("Insufficient stock for product ID {$item['product_id']}");
+                    // Only check stock and decrement for non-unit-produced items
+                    if ($product->source_type !== 'unit_produced') {
+                        $inventory = Inventory::where('unit_id', $sale->unit_id)
+                            ->where('product_id', $item['product_id'])
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$inventory || $inventory->quantity < $item['quantity']) {
+                            $available = $inventory ? $inventory->quantity : 0;
+                            throw new \Exception("Insufficient stock for {$product->name}. Available: {$available}, Requested: {$item['quantity']}");
+                        }
+
+                        $inventory->decrement('quantity', $item['quantity']);
                     }
-
-                    $inventory->decrement('quantity', $item['quantity']);
 
                     $lineTotal = $item['quantity'] * $item['unit_price'];
                     $additionalAmount += $lineTotal;

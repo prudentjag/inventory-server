@@ -60,11 +60,21 @@ class AuthController extends Controller
         return ResponseService::success($user, "User {$user->name} created successfully");
     }
 
-    public function users(Request $request){
+    public function users(Request $request)
+    {
         $user = $request->user();
-        if($user->role !== 'admin'){
-            return ResponseService::error('Unauthorized', 401);
+
+        // Admin sees everyone
+        if ($user->role === 'admin') {
+            return ResponseService::success(User::with('units')->get(), 'Users fetched successfully');
         }
-        return ResponseService::success(User::with('units')->get(), 'Users fetched successfully');
+
+        // Staff, Manager, Stockist can see users with 'server' role
+        if (in_array($user->role, ['staff', 'manager', 'stockist'])) {
+            $servers = User::where('role', 'server')->with('units')->get();
+            return ResponseService::success($servers, 'Servers fetched successfully');
+        }
+
+        return ResponseService::error('Unauthorized', 403);
     }
 }

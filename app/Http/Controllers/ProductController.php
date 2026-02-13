@@ -24,7 +24,7 @@ class ProductController extends Controller
         Gate::authorize('create', Product::class);
 
         $validated = $request->validated();
-        $quantity = $validated['quantity'];
+        $quantity = $validated['quantity'] ?? 0;
         unset($validated['quantity']);
 
         $product = Product::create($validated);
