@@ -270,39 +270,88 @@ class SalesController extends Controller
         try {
             return DB::transaction(function () use ($validated, $sale, $request) {
                 $additionalAmount = 0;
-                $itemsToCreate = [];
+                $existingItems = $sale->saleItems->keyBy('product_id');
 
                 foreach ($validated['items'] as $item) {
                     $product = \App\Models\Product::findOrFail($item['product_id']);
+                    $existingItem = $existingItems->get($item['product_id']);
+                    
+                    $quantityToProcess = $item['quantity'];
+                    if ($existingItem) {
+                        // Delta logic: only process the difference
+                        $quantityToProcess = $item['quantity'] - $existingItem->quantity;
+                    }
 
-                    // Only check stock and decrement for non-unit-produced items
-                    if ($product->source_type !== 'unit_produced') {
+                    // Only check stock and decrement/increment if there is a change and it's not unit-produced
+                    if ($quantityToProcess !== 0 && $product->source_type !== 'unit_produced') {
                         $inventory = Inventory::where('unit_id', $sale->unit_id)
                             ->where('product_id', $item['product_id'])
                             ->lockForUpdate()
                             ->first();
 
-                        if (!$inventory || $inventory->quantity < $item['quantity']) {
-                            $available = $inventory ? $inventory->quantity : 0;
-                            throw new \Exception("Insufficient stock for {$product->name}. Available: {$available}, Requested: {$item['quantity']}");
+                        if ($quantityToProcess > 0) {
+                            // Decrementing more stock
+                            if (!$inventory || $inventory->quantity < $quantityToProcess) {
+                                $available = $inventory ? $inventory->quantity : 0;
+                                throw new \Exception("Insufficient stock for {$product->name}. Available: {$available}, Requested additional: {$quantityToProcess}");
+                            }
+                            $inventory->decrement('quantity', $quantityToProcess);
+                        } else {
+                            // Returning stock (quantity decreased)
+                            if ($inventory) {
+                                $inventory->increment('quantity', abs($quantityToProcess));
+                            }
                         }
-
-                        $inventory->decrement('quantity', $item['quantity']);
                     }
 
                     $lineTotal = $item['quantity'] * $item['unit_price'];
-                    $additionalAmount += $lineTotal;
-
-                    $itemsToCreate[] = [
-                        'product_id' => $item['product_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'total_price' => $lineTotal,
-                    ];
+                    
+                    if ($existingItem) {
+                        // Update existing line
+                        $deltaPrice = $lineTotal - $existingItem->total_price;
+                        $additionalAmount += $deltaPrice;
+                        
+                        $existingItem->update([
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'total_price' => $lineTotal,
+                        ]);
+                    } else {
+                        // Create new line
+                        $additionalAmount += $lineTotal;
+                        $sale->saleItems()->create([
+                            'product_id' => $item['product_id'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'total_price' => $lineTotal,
+                        ]);
+                    }
                 }
 
-                $sale->saleItems()->createMany($itemsToCreate);
                 $sale->increment('total_amount', $additionalAmount);
+
+                // Handle deletions: Find items that were in the sale but are not in the current request
+                $requestedProductIds = collect($validated['items'])->pluck('product_id')->toArray();
+                foreach ($existingItems as $productId => $existingItem) {
+                    if (!in_array($productId, $requestedProductIds)) {
+                        // Return stock for deleted item
+                        $product = $existingItem->product;
+                        if ($product->source_type !== 'unit_produced') {
+                            $inventory = Inventory::where('unit_id', $sale->unit_id)
+                                ->where('product_id', $productId)
+                                ->lockForUpdate()
+                                ->first();
+                            
+                            if ($inventory) {
+                                $inventory->increment('quantity', $existingItem->quantity);
+                            }
+                        }
+
+                        // Subtract from sale total and delete item
+                        $sale->decrement('total_amount', $existingItem->total_price);
+                        $existingItem->delete();
+                    }
+                }
 
                 $sale->refresh();
 
@@ -347,10 +396,15 @@ class SalesController extends Controller
             return ResponseService::success($sale, 'Invoice is already marked as paid');
         }
 
-        // Authorization: Only owner (server) or admin/stockist can mark as paid
+        // Authorization: Only owner (server), admin/stockist, or staff in the same unit
         $user = $request->user();
-        if ($sale->user_id !== $user->id && !in_array($user->role, ['admin', 'stockist'])) {
-            return ResponseService::error('Unauthorized. Only the owner of this sale can mark it as paid.', 403);
+        $isOwner = $sale->user_id === $user->id;
+        $isGlobalAdmin = in_array($user->role, ['admin', 'stockist']);
+        $isUnitStaff = in_array($user->role, ['manager', 'unit_head', 'staff']) && 
+                       $user->units()->where('units.id', $sale->unit_id)->exists();
+
+        if (!$isOwner && !$isGlobalAdmin && !$isUnitStaff) {
+            return ResponseService::error('Unauthorized. You do not have permission to mark this sale as paid.', 403);
         }
 
         $sale->update([
