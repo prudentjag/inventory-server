@@ -31,7 +31,10 @@ class StoreSaleRequest extends FormRequest
             'payment_status' => 'nullable|string|in:pending,paid',
             'server_id' => 'nullable|exists:users,id',
             'transaction_reference' => 'nullable|string',
-            'table_number' => 'nullable|string'
+            'table_number' => 'nullable|string',
+            'customer_name' => 'nullable|string',
+            'customer_email' => 'nullable|email',
+            'phone_number' => 'nullable|string'
         ];
     }
 }

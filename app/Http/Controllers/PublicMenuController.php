@@ -87,6 +87,7 @@ class PublicMenuController extends Controller
             'customer_name' => 'nullable|string',
             'customer_email' => 'nullable|email',
             'table_number' => 'nullable|string',
+            'phone_number' => 'nullable|string',
         ]);
 
         try {
@@ -128,6 +129,9 @@ class PublicMenuController extends Controller
                     'unit_id' => $validated['unit_id'],
                     'user_id' => null, // Guest order
                     'invoice_number' => 'GUEST-' . strtoupper(Str::random(10)),
+                    'customer_name' => $validated['customer_name'] ?? null,
+                    'customer_email' => $validated['customer_email'] ?? null,
+                    'phone_number' => $validated['phone_number'] ?? null,
                     'table_number' => $validated['table_number'] ?? null,
                     'total_amount' => $totalAmount,
                     'payment_method' => 'unspecified',
