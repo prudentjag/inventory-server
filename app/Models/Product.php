@@ -19,8 +19,25 @@ class Product extends Model
         'expiry_date',
         'trackable',
         'product_type',
-        'source_type'
+        'source_type',
+        'image_path'
     ];
+
+    protected $appends = ['total_items_in_stock', 'image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->image_path) {
+            return asset('storage/' . $this->image_path);
+        }
+
+        // Fallback to brand image
+        if ($this->brand) {
+            return $this->brand->image_url;
+        }
+
+        return null;
+    }
 
     public function brand()
     {

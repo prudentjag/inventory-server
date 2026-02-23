@@ -27,6 +27,10 @@ class ProductController extends Controller
         $quantity = $validated['quantity'] ?? 0;
         unset($validated['quantity']);
 
+        if ($request->hasFile('image')) {
+            $validated['image_path'] = $request->file('image')->store('products', 'public');
+        }
+
         $product = Product::create($validated);
 
         // Only add to central stock if source_type is 'central_stock'
@@ -58,8 +62,13 @@ class ProductController extends Controller
 
         Gate::authorize('update', $product);
 
+        $validated = $request->validated();
+        if ($request->hasFile('image')) {
+            $validated['image_path'] = $request->file('image')->store('products', 'public');
+        }
+
         $oldValues = $product->toArray();
-        $product->update($request->validated());
+        $product->update($validated);
         AuditService::log('product_updated', $product->id, $product, $oldValues, $product->toArray(), "Product updated: {$product->name}");
 
         return  ResponseService::success($product, 'Product updated successfully');

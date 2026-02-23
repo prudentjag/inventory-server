@@ -35,6 +35,7 @@ class StoreProductRequest extends FormRequest
             'items_per_set' => 'required_if:product_type,set|integer|min:1',
             'source_type' => 'required|in:central_stock,unit_produced',
             'quantity' => 'required_if:source_type,central_stock|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ];
     }
 }

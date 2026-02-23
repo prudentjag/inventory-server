@@ -34,6 +34,7 @@ class UpdateProductRequest extends FormRequest
             'items_per_set' => 'nullable|integer|min:1',
             'size' => 'nullable|in:small,medium,big',
             'source_type' => 'in:central_stock,unit_produced',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ];
     }
 }

@@ -41,6 +41,7 @@ class ProductTypeStockTest extends TestCase
             'cost_price' => 5000,
             'selling_price' => 6000,
             'product_type' => 'individual',
+            'source_type' => 'central_stock',
             'quantity' => 10 // 10kg
         ]);
 
@@ -64,6 +65,7 @@ class ProductTypeStockTest extends TestCase
             'cost_price' => 1000,
             'selling_price' => 1500,
             'product_type' => 'set',
+            'source_type' => 'central_stock',
             'items_per_set' => 12,
             'quantity' => 5 // 5 crates
         ]);
